@@ -1,0 +1,6 @@
+{
+  "name": "MechBoard",
+  "description": "Gboard-style mechanical keyboard app with latest Android conversation icons, WhatsApp packs, and authentic switch acoustics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
