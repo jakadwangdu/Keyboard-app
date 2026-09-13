@@ -23,6 +23,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import com.example.icons.AppIcon
 import com.example.icons.AppIconGlyph
 import com.example.model.*
@@ -40,7 +46,8 @@ fun ConversationChatView(
     onOpenEmoji: () -> Unit,
     onClearChat: () -> Unit,
     onReactionClick: (Long, String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onUpdateActiveText: ((String) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -277,28 +284,39 @@ fun ConversationChatView(
                         )
                     }
 
-                    // Live typing text viewport with blinking indicator
+                    // Live typing text viewport (Supports soft keyboard IME, physical typing, and mechanical keys)
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        if (activeText.isEmpty()) {
-                            Text(
-                                text = "Type a message...",
-                                fontSize = 14.sp,
-                                color = if (isRetro95) Color(0xFF707070) else textColor.copy(alpha = 0.45f),
-                                fontFamily = if (isRetro95) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default
-                            )
-                        } else {
-                            Text(
-                                text = activeText,
+                        BasicTextField(
+                            value = activeText,
+                            onValueChange = { onUpdateActiveText?.invoke(it) },
+                            textStyle = TextStyle(
                                 fontSize = 15.sp,
                                 fontWeight = if (isRetro95) FontWeight.Medium else FontWeight.Normal,
                                 color = if (isRetro95) Color.Black else textColor,
-                                fontFamily = if (isRetro95) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default,
-                                maxLines = 1
-                            )
-                        }
+                                fontFamily = if (isRetro95) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default
+                            ),
+                            cursorBrush = SolidColor(if (isRetro95) Color.Black else accentColor),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            keyboardActions = KeyboardActions(onSend = { onSendMessage() }),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("chat_input_text_field"),
+                            decorationBox = { innerTextField ->
+                                if (activeText.isEmpty()) {
+                                    Text(
+                                        text = "Type a message...",
+                                        fontSize = 14.sp,
+                                        color = if (isRetro95) Color(0xFF707070) else textColor.copy(alpha = 0.45f),
+                                        fontFamily = if (isRetro95) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        )
                     }
 
                     // Attachments Button (Paperclip)

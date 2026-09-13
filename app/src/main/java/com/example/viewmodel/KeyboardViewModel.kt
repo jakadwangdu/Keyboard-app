@@ -145,6 +145,11 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun updateActiveText(newText: String) {
+        _activeText.value = newText
+        updateSuggestions(newText)
+    }
+
     private fun updateSuggestions(text: String) {
         if (text.isBlank()) {
             _suggestions.value = emptyList()

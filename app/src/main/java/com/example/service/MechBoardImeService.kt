@@ -3,6 +3,8 @@ package com.example.service
 import android.inputmethodservice.InputMethodService
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -55,11 +57,52 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
         audioEngine = MechanicalAudioEngine(this)
     }
 
+    override fun onEvaluateInputViewShown(): Boolean {
+        // Always show the IME soft keyboard on screen even if hardware/emulator keyboard is detected
+        return true
+    }
+
+    override fun onEvaluateFullscreenMode(): Boolean {
+        return false
+    }
+
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        super.onFinishInputView(finishingInput)
+    }
+
+    private fun handleBackspace() {
+        val ic = currentInputConnection ?: return
+        val selected = ic.getSelectedText(0)
+        if (!selected.isNullOrEmpty()) {
+            ic.commitText("", 1)
+        } else {
+            val before = ic.getTextBeforeCursor(1, 0)
+            if (before.isNullOrEmpty()) {
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+            } else {
+                ic.deleteSurroundingText(1, 0)
+            }
+        }
+    }
+
     override fun onCreateInputView(): View {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
 
         val composeView = ComposeView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
             setViewTreeLifecycleOwner(this@MechBoardImeService)
             setViewTreeViewModelStoreOwner(this@MechBoardImeService)
             setViewTreeSavedStateRegistryOwner(this@MechBoardImeService)
@@ -128,8 +171,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                     },
                                     onBackspace = {
                                         if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+                                        handleBackspace()
                                     },
                                     onSendOrEnter = {
                                         if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
@@ -157,8 +199,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                     },
                                     onBackspace = {
                                         if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+                                        handleBackspace()
                                     },
                                     onSendOrEnter = {
                                         if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
@@ -179,8 +220,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                     },
                                     onBackspace = {
                                         if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+                                        handleBackspace()
                                     },
                                     onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
                                 )
@@ -196,8 +236,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                         currentInputConnection?.commitText(key, 1)
                                     },
                                     onBackspace = {
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+                                        handleBackspace()
                                     },
                                     onSendOrEnter = {
                                         currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))

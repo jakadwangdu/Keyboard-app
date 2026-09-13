@@ -71,6 +71,7 @@ fun MainKeyboardScreen(
                 onOpenEmoji = { viewModel.setMode(KeyboardMode.EMOJI_DRAWER) },
                 onClearChat = { viewModel.clearChat() },
                 onReactionClick = { msgId, reaction -> viewModel.addReaction(msgId, reaction) },
+                onUpdateActiveText = { viewModel.updateActiveText(it) },
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
