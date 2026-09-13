@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -29,6 +30,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,13 +55,17 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
 
     override fun onCreate() {
         super.onCreate()
-        savedStateRegistryController.performRestore(null)
+        try {
+            savedStateRegistryController.performAttach()
+        } catch (_: Exception) {}
+        try {
+            savedStateRegistryController.performRestore(null)
+        } catch (_: Exception) {}
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         audioEngine = MechanicalAudioEngine(this)
     }
 
     override fun onEvaluateInputViewShown(): Boolean {
-        // Always show the IME soft keyboard on screen even if hardware/emulator keyboard is detected
         return true
     }
 
@@ -68,13 +75,17 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        if (lifecycleRegistry.currentState != Lifecycle.State.RESUMED) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        }
         super.onFinishInputView(finishingInput)
     }
 
@@ -95,156 +106,193 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
     }
 
     override fun onCreateInputView(): View {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        window?.window?.decorView?.let { decor ->
+            decor.setViewTreeLifecycleOwner(this)
+            decor.setViewTreeViewModelStoreOwner(this)
+            decor.setViewTreeSavedStateRegistryOwner(this)
+        }
+
+        if (lifecycleRegistry.currentState != Lifecycle.State.RESUMED) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
 
         val composeView = ComposeView(this).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(this@MechBoardImeService))
             setViewTreeLifecycleOwner(this@MechBoardImeService)
             setViewTreeViewModelStoreOwner(this@MechBoardImeService)
             setViewTreeSavedStateRegistryOwner(this@MechBoardImeService)
 
             setContent {
-                var currentMode by remember { mutableStateOf(KeyboardMode.QWERTY) }
-                var isShiftActive by remember { mutableStateOf(false) }
-                var isCapsLock by remember { mutableStateOf(false) }
-                var isAltSymbols by remember { mutableStateOf(false) }
-                val currentTheme: KeyboardThemeType = KeyboardThemeType.AMOLED_BLACK
-                val currentSwitch: SwitchType = SwitchType.CREAM_THOCK
-                val iconPackType: IconPackType = IconPackType.WHATSAPP_EXPRESSIVE
-                var isSoundOn by remember { mutableStateOf(true) }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(currentTheme.backgroundHex))
-                ) {
-                    GboardTopBar(
-                        iconPackType = iconPackType,
-                        theme = currentTheme,
-                        currentSwitch = currentSwitch,
-                        keyboardMode = currentMode,
-                        isSoundOn = isSoundOn,
-                        activeText = "",
-                        suggestions = listOf("the", "to", "and", "hello", "keyboard"),
-                        isVoiceTyping = false,
-                        onSuggestionClick = { word ->
-                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                            currentInputConnection?.commitText("$word ", 1)
-                        },
-                        onToggleIconPack = { },
-                        onOpenSwitchStudio = { },
-                        onOpenThemePicker = { },
-                        onToggleSound = { isSoundOn = !isSoundOn },
-                        onOpenEmoji = {
-                            currentMode = if (currentMode == KeyboardMode.EMOJI_DRAWER) KeyboardMode.QWERTY else KeyboardMode.EMOJI_DRAWER
-                        },
-                        onOpenAttachments = { },
-                        onOpenClipboard = { },
-                        onToggleVoiceTyping = { },
-                        onFormatText = { wrapper ->
-                            currentInputConnection?.commitText(wrapper, 1)
-                        }
+                MaterialTheme(
+                    colorScheme = darkColorScheme(
+                        primary = Color(0xFF00E676),
+                        background = Color(0xFF000000),
+                        surface = Color(0xFF141A21)
                     )
+                ) {
+                    var currentMode by remember { mutableStateOf(KeyboardMode.QWERTY) }
+                    var isShiftActive by remember { mutableStateOf(false) }
+                    var isCapsLock by remember { mutableStateOf(false) }
+                    var isAltSymbols by remember { mutableStateOf(false) }
+                    var currentTheme by remember { mutableStateOf(KeyboardThemeType.AMOLED_BLACK) }
+                    var currentSwitch by remember { mutableStateOf(SwitchType.CREAM_THOCK) }
+                    var iconPackType by remember { mutableStateOf(IconPackType.WHATSAPP_EXPRESSIVE) }
+                    var isSoundOn by remember { mutableStateOf(true) }
 
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color(currentTheme.backgroundHex))
                     ) {
-                        when (currentMode) {
-                            KeyboardMode.QWERTY -> {
-                                GboardQwertyView(
-                                    iconPackType = iconPackType,
-                                    theme = currentTheme,
-                                    isShiftActive = isShiftActive,
-                                    isCapsLock = isCapsLock,
-                                    onKeyPressed = { key ->
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.commitText(key, 1)
-                                        if (isShiftActive && !isCapsLock) {
-                                            isShiftActive = false
-                                        }
-                                    },
-                                    onBackspace = {
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        handleBackspace()
-                                    },
-                                    onSendOrEnter = {
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-                                    },
-                                    onToggleShift = {
-                                        if (isShiftActive) {
-                                            if (!isCapsLock) isCapsLock = true else { isShiftActive = false; isCapsLock = false }
-                                        } else {
-                                            isShiftActive = true
-                                        }
-                                    },
-                                    onSwitchMode = { currentMode = it }
-                                )
+                        GboardTopBar(
+                            iconPackType = iconPackType,
+                            theme = currentTheme,
+                            currentSwitch = currentSwitch,
+                            keyboardMode = currentMode,
+                            isSoundOn = isSoundOn,
+                            activeText = "",
+                            suggestions = listOf("the", "to", "and", "hello", "keyboard"),
+                            isVoiceTyping = false,
+                            onSuggestionClick = { word ->
+                                if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                currentInputConnection?.commitText("$word ", 1)
+                            },
+                            onToggleIconPack = {
+                                iconPackType = when (iconPackType) {
+                                    IconPackType.WHATSAPP_EXPRESSIVE -> IconPackType.ANDROID_17
+                                    IconPackType.ANDROID_17 -> IconPackType.IOS_SF
+                                    IconPackType.IOS_SF -> IconPackType.RETRO_PIXEL_95
+                                    IconPackType.RETRO_PIXEL_95 -> IconPackType.WHATSAPP_EXPRESSIVE
+                                }
+                            },
+                            onOpenSwitchStudio = {
+                                currentSwitch = when (currentSwitch) {
+                                    SwitchType.CREAM_THOCK -> SwitchType.BLUE_CLICKY
+                                    SwitchType.BLUE_CLICKY -> SwitchType.BROWN_TACTILE
+                                    SwitchType.BROWN_TACTILE -> SwitchType.RED_LINEAR
+                                    SwitchType.RED_LINEAR -> SwitchType.MODEL_M_SPRING
+                                    SwitchType.MODEL_M_SPRING -> SwitchType.CREAM_THOCK
+                                }
+                                audioEngine.playKeyPressSound(currentSwitch)
+                            },
+                            onOpenThemePicker = {
+                                val allThemes = KeyboardThemeType.values()
+                                val nextIndex = (allThemes.indexOf(currentTheme) + 1) % allThemes.size
+                                currentTheme = allThemes[nextIndex]
+                            },
+                            onToggleSound = { isSoundOn = !isSoundOn },
+                            onOpenEmoji = {
+                                currentMode = if (currentMode == KeyboardMode.EMOJI_DRAWER) KeyboardMode.QWERTY else KeyboardMode.EMOJI_DRAWER
+                            },
+                            onOpenAttachments = { },
+                            onOpenClipboard = { },
+                            onToggleVoiceTyping = { },
+                            onFormatText = { wrapper ->
+                                currentInputConnection?.commitText(wrapper, 1)
                             }
-                            KeyboardMode.SYMBOLS_123, KeyboardMode.SYMBOLS_ALT -> {
-                                GboardSymbolsView(
-                                    isAltSymbols = isAltSymbols,
-                                    iconPackType = iconPackType,
-                                    theme = currentTheme,
-                                    onKeyPressed = { key ->
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.commitText(key, 1)
-                                    },
-                                    onBackspace = {
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        handleBackspace()
-                                    },
-                                    onSendOrEnter = {
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-                                    },
-                                    onToggleAltSymbols = { isAltSymbols = !isAltSymbols },
-                                    onSwitchMode = { currentMode = it }
-                                )
-                            }
-                            KeyboardMode.EMOJI_DRAWER, KeyboardMode.STICKERS_DRAWER -> {
-                                GboardEmojiStickerDrawer(
-                                    iconPackType = iconPackType,
-                                    theme = currentTheme,
-                                    onEmojiSelected = { emoji ->
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.commitText(emoji, 1)
-                                    },
-                                    onBackspace = {
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        handleBackspace()
-                                    },
-                                    onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
-                                )
-                            }
-                            else -> {
-                                GboardQwertyView(
-                                    iconPackType = iconPackType,
-                                    theme = currentTheme,
-                                    isShiftActive = isShiftActive,
-                                    isCapsLock = isCapsLock,
-                                    onKeyPressed = { key ->
-                                        if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
-                                        currentInputConnection?.commitText(key, 1)
-                                    },
-                                    onBackspace = {
-                                        handleBackspace()
-                                    },
-                                    onSendOrEnter = {
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                                        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-                                    },
-                                    onToggleShift = { isShiftActive = !isShiftActive },
-                                    onSwitchMode = { currentMode = it }
-                                )
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(currentTheme.backgroundHex))
+                        ) {
+                            when (currentMode) {
+                                KeyboardMode.QWERTY -> {
+                                    GboardQwertyView(
+                                        iconPackType = iconPackType,
+                                        theme = currentTheme,
+                                        isShiftActive = isShiftActive,
+                                        isCapsLock = isCapsLock,
+                                        onKeyPressed = { key ->
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            currentInputConnection?.commitText(key, 1)
+                                            if (isShiftActive && !isCapsLock) {
+                                                isShiftActive = false
+                                            }
+                                        },
+                                        onBackspace = {
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            handleBackspace()
+                                        },
+                                        onSendOrEnter = {
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                                        },
+                                        onToggleShift = {
+                                            if (isShiftActive) {
+                                                if (!isCapsLock) isCapsLock = true else { isShiftActive = false; isCapsLock = false }
+                                            } else {
+                                                isShiftActive = true
+                                            }
+                                        },
+                                        onSwitchMode = { currentMode = it }
+                                    )
+                                }
+                                KeyboardMode.SYMBOLS_123, KeyboardMode.SYMBOLS_ALT -> {
+                                    GboardSymbolsView(
+                                        isAltSymbols = isAltSymbols,
+                                        iconPackType = iconPackType,
+                                        theme = currentTheme,
+                                        onKeyPressed = { key ->
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            currentInputConnection?.commitText(key, 1)
+                                        },
+                                        onBackspace = {
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            handleBackspace()
+                                        },
+                                        onSendOrEnter = {
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                                        },
+                                        onToggleAltSymbols = { isAltSymbols = !isAltSymbols },
+                                        onSwitchMode = { currentMode = it }
+                                    )
+                                }
+                                KeyboardMode.EMOJI_DRAWER, KeyboardMode.STICKERS_DRAWER -> {
+                                    GboardEmojiStickerDrawer(
+                                        iconPackType = iconPackType,
+                                        theme = currentTheme,
+                                        onEmojiSelected = { emoji ->
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            currentInputConnection?.commitText(emoji, 1)
+                                        },
+                                        onBackspace = {
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            handleBackspace()
+                                        },
+                                        onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
+                                    )
+                                }
+                                else -> {
+                                    GboardQwertyView(
+                                        iconPackType = iconPackType,
+                                        theme = currentTheme,
+                                        isShiftActive = isShiftActive,
+                                        isCapsLock = isCapsLock,
+                                        onKeyPressed = { key ->
+                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            currentInputConnection?.commitText(key, 1)
+                                        },
+                                        onBackspace = {
+                                            handleBackspace()
+                                        },
+                                        onSendOrEnter = {
+                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                                        },
+                                        onToggleShift = { isShiftActive = !isShiftActive },
+                                        onSwitchMode = { currentMode = it }
+                                    )
+                                }
                             }
                         }
                     }
@@ -255,7 +303,9 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
     }
 
     override fun onDestroy() {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.CREATED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        }
         store.clear()
         super.onDestroy()
     }

@@ -55,15 +55,17 @@ fun DefaultKeyboardSetupDialog(
     // Periodic check for IME status
     LaunchedEffect(Unit) {
         while (true) {
-            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            val enabledMethods = imm?.enabledInputMethodList ?: emptyList()
-            isEnabledState = enabledMethods.any { it.packageName == context.packageName }
+            try {
+                val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                val enabledMethods = imm?.enabledInputMethodList ?: emptyList()
+                isEnabledState = enabledMethods.any { it.packageName == context.packageName }
 
-            val currentIme = Settings.Secure.getString(
-                context.contentResolver,
-                Settings.Secure.DEFAULT_INPUT_METHOD
-            )
-            isSelectedState = currentIme?.contains(context.packageName) == true
+                val currentIme = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.DEFAULT_INPUT_METHOD
+                )
+                isSelectedState = currentIme?.contains(context.packageName) == true
+            } catch (_: Exception) {}
             delay(1000)
         }
     }
