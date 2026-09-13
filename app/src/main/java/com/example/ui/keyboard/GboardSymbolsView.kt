@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.icons.AppIconGlyph
 import com.example.model.IconPackType
@@ -18,6 +19,7 @@ fun GboardSymbolsView(
     isAltSymbols: Boolean,
     iconPackType: IconPackType,
     theme: KeyboardThemeType,
+    keyHeight: Dp = 50.dp,
     onKeyPressed: (String) -> Unit,
     onBackspace: () -> Unit,
     onSendOrEnter: () -> Unit,
@@ -61,7 +63,7 @@ fun GboardSymbolsView(
                     iconPackType = iconPackType,
                     theme = theme,
                     weight = 1f,
-                    height = 50.dp,
+                    height = keyHeight,
                     onKeyTriggered = { onKeyPressed(key) }
                 )
             }
@@ -78,7 +80,7 @@ fun GboardSymbolsView(
                     iconPackType = iconPackType,
                     theme = theme,
                     weight = 1f,
-                    height = 50.dp,
+                    height = keyHeight,
                     onKeyTriggered = { onKeyPressed(key) }
                 )
             }
@@ -96,7 +98,7 @@ fun GboardSymbolsView(
                 isAlt = true,
                 isAccent = isAltSymbols,
                 weight = 1.45f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = onToggleAltSymbols
             )
 
@@ -106,7 +108,7 @@ fun GboardSymbolsView(
                     iconPackType = iconPackType,
                     theme = theme,
                     weight = 1f,
-                    height = 50.dp,
+                    height = keyHeight,
                     onKeyTriggered = { onKeyPressed(key) }
                 )
             }
@@ -117,7 +119,8 @@ fun GboardSymbolsView(
                 theme = theme,
                 isAlt = true,
                 weight = 1.45f,
-                height = 50.dp,
+                height = keyHeight,
+                isRepeatable = true,
                 onKeyTriggered = onBackspace
             )
         }
@@ -133,7 +136,7 @@ fun GboardSymbolsView(
                 theme = theme,
                 isAlt = true,
                 weight = 1.35f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = { onSwitchMode(KeyboardMode.QWERTY) }
             )
 
@@ -142,7 +145,7 @@ fun GboardSymbolsView(
                 iconPackType = iconPackType,
                 theme = theme,
                 weight = 0.9f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = { onKeyPressed("<") }
             )
 
@@ -152,7 +155,7 @@ fun GboardSymbolsView(
                 theme = theme,
                 isAlt = true,
                 weight = 1.0f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = { onSwitchMode(KeyboardMode.EMOJI_DRAWER) }
             )
 
@@ -161,7 +164,7 @@ fun GboardSymbolsView(
                 iconPackType = iconPackType,
                 theme = theme,
                 weight = 3.6f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = { onKeyPressed(" ") }
             )
 
@@ -170,7 +173,7 @@ fun GboardSymbolsView(
                 iconPackType = iconPackType,
                 theme = theme,
                 weight = 0.9f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = { onKeyPressed(">") }
             )
 
@@ -180,7 +183,7 @@ fun GboardSymbolsView(
                 theme = theme,
                 isAccent = true,
                 weight = 1.45f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = onSendOrEnter
             )
         }

@@ -152,7 +152,7 @@ class MechanicalAudioEngine(private val context: Context) {
         }
     }
 
-    private fun triggerHaptic(switch: SwitchType) {
+    fun triggerHaptic(switch: SwitchType = currentSwitch) {
         try {
             if (vibrator == null || !vibrator.hasVibrator()) return
 

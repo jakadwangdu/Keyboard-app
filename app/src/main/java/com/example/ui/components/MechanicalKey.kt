@@ -29,6 +29,9 @@ import com.example.icons.AppIcon
 import com.example.icons.AppIconGlyph
 import com.example.model.IconPackType
 import com.example.model.KeyboardThemeType
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 @Composable
 fun RowScope.MechanicalKey(
@@ -42,10 +45,14 @@ fun RowScope.MechanicalKey(
     weight: Float = 1f,
     height: Dp = 48.dp,
     testTagId: String? = null,
+    isRepeatable: Boolean = false,
     onKeyTriggered: () -> Unit = {},
     onLongPress: (() -> Unit)? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val currentOnKeyTriggered by rememberUpdatedState(onKeyTriggered)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val coroutineScope = rememberCoroutineScope()
 
     // Physical key travel physics animation
     val travelOffset by animateFloatAsState(
@@ -83,12 +90,25 @@ fun RowScope.MechanicalKey(
             .height(height)
             .padding(horizontal = 2.dp, vertical = 2.dp)
             .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
-            .pointerInput(Unit) {
+            .pointerInput(isRepeatable) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     isPressed = true
-                    onKeyTriggered()
-                    val upOrCancel = waitForUpOrCancellation()
+                    currentOnKeyTriggered()
+
+                    if (isRepeatable) {
+                        val repeatJob = coroutineScope.launch {
+                            delay(350L) // Initial hold threshold
+                            while (isActive) {
+                                currentOnKeyTriggered()
+                                delay(45L) // Rapid continuous deletion interval
+                            }
+                        }
+                        waitForUpOrCancellation()
+                        repeatJob.cancel()
+                    } else {
+                        waitForUpOrCancellation()
+                    }
                     isPressed = false
                 }
             },

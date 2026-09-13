@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.MechanicalAudioEngine
@@ -32,6 +34,12 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _keyboardTheme = MutableStateFlow(KeyboardThemeType.AMOLED_BLACK)
     val keyboardTheme: StateFlow<KeyboardThemeType> = _keyboardTheme.asStateFlow()
 
+    private val _keyHeight = MutableStateFlow(50.dp)
+    val keyHeight: StateFlow<Dp> = _keyHeight.asStateFlow()
+
+    private val _showSettingsDialog = MutableStateFlow(false)
+    val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
+
     private val _showImeSetupDialog = MutableStateFlow(false)
     val showImeSetupDialog: StateFlow<Boolean> = _showImeSetupDialog.asStateFlow()
 
@@ -52,6 +60,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     private val _isSoundOn = MutableStateFlow(true)
     val isSoundOn: StateFlow<Boolean> = _isSoundOn.asStateFlow()
+
+    private val _isHapticOn = MutableStateFlow(true)
+    val isHapticOn: StateFlow<Boolean> = _isHapticOn.asStateFlow()
 
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions: StateFlow<List<String>> = _suggestions.asStateFlow()
@@ -324,6 +335,38 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         _currentSwitch.value = switch
         audioEngine.currentSwitch = switch
         audioEngine.playKeyPressSound(switch)
+    }
+
+    fun setKeyHeight(height: Dp) {
+        _keyHeight.value = height
+    }
+
+    fun setShowSettingsDialog(show: Boolean) {
+        _showSettingsDialog.value = show
+    }
+
+    fun setHapticEnabled(enabled: Boolean) {
+        _isHapticOn.value = enabled
+        audioEngine.isHapticEnabled = enabled
+    }
+
+    fun toggleHaptic() {
+        val next = !_isHapticOn.value
+        _isHapticOn.value = next
+        audioEngine.isHapticEnabled = next
+    }
+
+    fun setSoundEnabled(enabled: Boolean) {
+        _isSoundOn.value = enabled
+        audioEngine.isSoundEnabled = enabled
+    }
+
+    fun setSoundVolume(volume: Float) {
+        audioEngine.volumeLevel = volume
+    }
+
+    fun setHapticStrength(strength: Float) {
+        audioEngine.hapticStrength = strength
     }
 
     fun toggleSound() {

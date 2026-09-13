@@ -46,7 +46,8 @@ fun GboardTopBar(
     onOpenClipboard: () -> Unit,
     onToggleVoiceTyping: () -> Unit,
     onFormatText: (String) -> Unit,
-    onOpenDefaultKeyboardSetup: () -> Unit = {}
+    onOpenDefaultKeyboardSetup: () -> Unit = {},
+    onOpenSettings: () -> Unit = {}
 ) {
     val barBg = Color(theme.surfaceHex)
     val accentColor = Color(theme.accentHex)
@@ -284,6 +285,16 @@ fun GboardTopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // Keyboard Settings & Resize icon
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.SETTINGS,
+                        packType = iconPackType,
+                        tint = accentColor,
+                        badgeText = null,
+                        tooltip = "Keyboard Settings & Resizing",
+                        onClick = onOpenSettings
+                    )
+
                     // Set as Default Keyboard (System IME Setup)
                     ToolbarChipItem(
                         label = "⌨️ Set Default",

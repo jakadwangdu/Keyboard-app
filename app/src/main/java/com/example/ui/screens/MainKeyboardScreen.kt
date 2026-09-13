@@ -30,6 +30,9 @@ fun MainKeyboardScreen(
     val keyboardMode by viewModel.keyboardMode.collectAsStateWithLifecycle()
     val iconPackType by viewModel.iconPackType.collectAsStateWithLifecycle()
     val theme by viewModel.keyboardTheme.collectAsStateWithLifecycle()
+    val keyHeight by viewModel.keyHeight.collectAsStateWithLifecycle()
+    val showSettingsDialog by viewModel.showSettingsDialog.collectAsStateWithLifecycle()
+    val isHapticOn by viewModel.isHapticOn.collectAsStateWithLifecycle()
     val currentSwitch by viewModel.currentSwitch.collectAsStateWithLifecycle()
     val isShiftActive by viewModel.isShiftActive.collectAsStateWithLifecycle()
     val isCapsLock by viewModel.isCapsLock.collectAsStateWithLifecycle()
@@ -111,7 +114,8 @@ fun MainKeyboardScreen(
                 onOpenClipboard = { showClipboardSheet = true },
                 onToggleVoiceTyping = { viewModel.toggleVoiceTyping() },
                 onFormatText = { wrapper -> viewModel.formatText(wrapper) },
-                onOpenDefaultKeyboardSetup = { showDefaultKeyboardDialog = true }
+                onOpenDefaultKeyboardSetup = { showDefaultKeyboardDialog = true },
+                onOpenSettings = { viewModel.setShowSettingsDialog(true) }
             )
 
             // 3. Gboard Mechanical Keyboard Deck (QWERTY / Symbols / Emojis)
@@ -132,6 +136,7 @@ fun MainKeyboardScreen(
                                 theme = theme,
                                 isShiftActive = isShiftActive,
                                 isCapsLock = isCapsLock,
+                                keyHeight = keyHeight,
                                 onKeyPressed = { viewModel.typeKey(it) },
                                 onBackspace = { viewModel.backspace() },
                                 onSendOrEnter = { viewModel.sendMessage() },
@@ -144,6 +149,7 @@ fun MainKeyboardScreen(
                                 isAltSymbols = isAltSymbols,
                                 iconPackType = iconPackType,
                                 theme = theme,
+                                keyHeight = keyHeight,
                                 onKeyPressed = { viewModel.typeKey(it) },
                                 onBackspace = { viewModel.backspace() },
                                 onSendOrEnter = { viewModel.sendMessage() },
@@ -166,6 +172,7 @@ fun MainKeyboardScreen(
                                 theme = theme,
                                 isShiftActive = isShiftActive,
                                 isCapsLock = isCapsLock,
+                                keyHeight = keyHeight,
                                 onKeyPressed = { viewModel.typeKey(it) },
                                 onBackspace = { viewModel.backspace() },
                                 onSendOrEnter = { viewModel.sendMessage() },
@@ -176,6 +183,31 @@ fun MainKeyboardScreen(
                     }
                 }
             }
+        }
+
+        // Modals & Dialogs
+        if (showSettingsDialog) {
+            KeyboardSettingsDialog(
+                currentKeyHeight = keyHeight,
+                currentSwitch = currentSwitch,
+                currentTheme = theme,
+                currentIconPack = iconPackType,
+                soundEngine = viewModel.audioEngine,
+                isSoundOn = isSoundOn,
+                isHapticOn = isHapticOn,
+                isImeEnabled = viewModel.isImeEnabled(),
+                isImeSelected = viewModel.isImeSelected(),
+                onUpdateKeyHeight = { viewModel.setKeyHeight(it) },
+                onSelectSwitch = { viewModel.setSwitch(it) },
+                onSelectTheme = { viewModel.setTheme(it) },
+                onSelectIconPack = { viewModel.setIconPack(it) },
+                onToggleSound = { viewModel.setSoundEnabled(it) },
+                onToggleHaptic = { viewModel.setHapticEnabled(it) },
+                onUpdateVolume = { viewModel.setSoundVolume(it) },
+                onUpdateHapticStrength = { viewModel.setHapticStrength(it) },
+                onOpenDefaultKeyboardSetup = { showDefaultKeyboardDialog = true },
+                onDismiss = { viewModel.setShowSettingsDialog(false) }
+            )
         }
 
         // Modals & Dialogs

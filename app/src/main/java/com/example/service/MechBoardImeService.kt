@@ -35,6 +35,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.example.ui.components.GboardTopBar
 
 class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
@@ -143,6 +145,9 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                     var currentSwitch by remember { mutableStateOf(SwitchType.CREAM_THOCK) }
                     var iconPackType by remember { mutableStateOf(IconPackType.WHATSAPP_EXPRESSIVE) }
                     var isSoundOn by remember { mutableStateOf(true) }
+                    var isHapticOn by remember { mutableStateOf(true) }
+                    var keyHeight by remember { mutableStateOf(50.dp) }
+                    var showSettingsDialog by remember { mutableStateOf(false) }
 
                     Column(
                         modifier = Modifier
@@ -159,7 +164,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                             suggestions = listOf("the", "to", "and", "hello", "keyboard"),
                             isVoiceTyping = false,
                             onSuggestionClick = { word ->
-                                if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                audioEngine.playKeyPressSound(currentSwitch)
                                 currentInputConnection?.commitText("$word ", 1)
                             },
                             onToggleIconPack = {
@@ -185,7 +190,10 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                 val nextIndex = (allThemes.indexOf(currentTheme) + 1) % allThemes.size
                                 currentTheme = allThemes[nextIndex]
                             },
-                            onToggleSound = { isSoundOn = !isSoundOn },
+                            onToggleSound = {
+                                isSoundOn = !isSoundOn
+                                audioEngine.isSoundEnabled = isSoundOn
+                            },
                             onOpenEmoji = {
                                 currentMode = if (currentMode == KeyboardMode.EMOJI_DRAWER) KeyboardMode.QWERTY else KeyboardMode.EMOJI_DRAWER
                             },
@@ -194,6 +202,9 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                             onToggleVoiceTyping = { },
                             onFormatText = { wrapper ->
                                 currentInputConnection?.commitText(wrapper, 1)
+                            },
+                            onOpenSettings = {
+                                showSettingsDialog = true
                             }
                         )
 
@@ -209,19 +220,20 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                         theme = currentTheme,
                                         isShiftActive = isShiftActive,
                                         isCapsLock = isCapsLock,
+                                        keyHeight = keyHeight,
                                         onKeyPressed = { key ->
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             currentInputConnection?.commitText(key, 1)
                                             if (isShiftActive && !isCapsLock) {
                                                 isShiftActive = false
                                             }
                                         },
                                         onBackspace = {
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             handleBackspace()
                                         },
                                         onSendOrEnter = {
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
                                         },
@@ -240,16 +252,17 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                         isAltSymbols = isAltSymbols,
                                         iconPackType = iconPackType,
                                         theme = currentTheme,
+                                        keyHeight = keyHeight,
                                         onKeyPressed = { key ->
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             currentInputConnection?.commitText(key, 1)
                                         },
                                         onBackspace = {
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             handleBackspace()
                                         },
                                         onSendOrEnter = {
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
                                         },
@@ -262,11 +275,11 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                         iconPackType = iconPackType,
                                         theme = currentTheme,
                                         onEmojiSelected = { emoji ->
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             currentInputConnection?.commitText(emoji, 1)
                                         },
                                         onBackspace = {
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             handleBackspace()
                                         },
                                         onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
@@ -278,8 +291,9 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                         theme = currentTheme,
                                         isShiftActive = isShiftActive,
                                         isCapsLock = isCapsLock,
+                                        keyHeight = keyHeight,
                                         onKeyPressed = { key ->
-                                            if (isSoundOn) audioEngine.playKeyPressSound(currentSwitch)
+                                            audioEngine.playKeyPressSound(currentSwitch)
                                             currentInputConnection?.commitText(key, 1)
                                         },
                                         onBackspace = {
@@ -294,6 +308,36 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                     )
                                 }
                             }
+                        }
+
+                        if (showSettingsDialog) {
+                            com.example.ui.components.KeyboardSettingsDialog(
+                                currentKeyHeight = keyHeight,
+                                currentSwitch = currentSwitch,
+                                currentTheme = currentTheme,
+                                currentIconPack = iconPackType,
+                                soundEngine = audioEngine,
+                                isSoundOn = isSoundOn,
+                                isHapticOn = isHapticOn,
+                                isImeEnabled = true,
+                                isImeSelected = true,
+                                onUpdateKeyHeight = { keyHeight = it },
+                                onSelectSwitch = { currentSwitch = it },
+                                onSelectTheme = { currentTheme = it },
+                                onSelectIconPack = { iconPackType = it },
+                                onToggleSound = {
+                                    isSoundOn = it
+                                    audioEngine.isSoundEnabled = it
+                                },
+                                onToggleHaptic = {
+                                    isHapticOn = it
+                                    audioEngine.isHapticEnabled = it
+                                },
+                                onUpdateVolume = { audioEngine.volumeLevel = it },
+                                onUpdateHapticStrength = { audioEngine.hapticStrength = it },
+                                onOpenDefaultKeyboardSetup = { },
+                                onDismiss = { showSettingsDialog = false }
+                            )
                         }
                     }
                 }

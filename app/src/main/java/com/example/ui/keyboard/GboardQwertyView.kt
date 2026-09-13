@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.icons.AppIconGlyph
 import com.example.model.IconPackType
@@ -19,6 +20,7 @@ fun GboardQwertyView(
     theme: KeyboardThemeType,
     isShiftActive: Boolean,
     isCapsLock: Boolean,
+    keyHeight: Dp = 50.dp,
     onKeyPressed: (String) -> Unit,
     onBackspace: () -> Unit,
     onSendOrEnter: () -> Unit,
@@ -63,7 +65,7 @@ fun GboardQwertyView(
                     iconPackType = iconPackType,
                     theme = theme,
                     weight = 1f,
-                    height = 50.dp,
+                    height = keyHeight,
                     testTagId = "key_$letter",
                     onKeyTriggered = { onKeyPressed(displayLetter) }
                 )
@@ -85,7 +87,7 @@ fun GboardQwertyView(
                     iconPackType = iconPackType,
                     theme = theme,
                     weight = 1f,
-                    height = 50.dp,
+                    height = keyHeight,
                     testTagId = "key_$letter",
                     onKeyTriggered = { onKeyPressed(displayLetter) }
                 )
@@ -105,7 +107,7 @@ fun GboardQwertyView(
                 isAlt = true,
                 isAccent = isShiftActive || isCapsLock,
                 weight = 1.45f,
-                height = 50.dp,
+                height = keyHeight,
                 testTagId = "key_shift",
                 onKeyTriggered = onToggleShift
             )
@@ -118,20 +120,21 @@ fun GboardQwertyView(
                     iconPackType = iconPackType,
                     theme = theme,
                     weight = 1f,
-                    height = 50.dp,
+                    height = keyHeight,
                     testTagId = "key_$letter",
                     onKeyTriggered = { onKeyPressed(displayLetter) }
                 )
             }
 
-            // Backspace Key
+            // Backspace Key (with continuous hold-to-delete)
             MechanicalKey(
                 iconGlyph = AppIconGlyph.BACKSPACE,
                 iconPackType = iconPackType,
                 theme = theme,
                 isAlt = true,
                 weight = 1.45f,
-                height = 50.dp,
+                height = keyHeight,
+                isRepeatable = true,
                 testTagId = "key_backspace",
                 onKeyTriggered = onBackspace
             )
@@ -149,7 +152,7 @@ fun GboardQwertyView(
                 theme = theme,
                 isAlt = true,
                 weight = 1.35f,
-                height = 50.dp,
+                height = keyHeight,
                 testTagId = "key_symbols_mode",
                 onKeyTriggered = { onSwitchMode(KeyboardMode.SYMBOLS_123) }
             )
@@ -160,7 +163,7 @@ fun GboardQwertyView(
                 iconPackType = iconPackType,
                 theme = theme,
                 weight = 0.9f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = { onKeyPressed(",") }
             )
 
@@ -171,7 +174,7 @@ fun GboardQwertyView(
                 theme = theme,
                 isAlt = true,
                 weight = 1.0f,
-                height = 50.dp,
+                height = keyHeight,
                 testTagId = "key_emoji_mode",
                 onKeyTriggered = { onSwitchMode(KeyboardMode.EMOJI_DRAWER) }
             )
@@ -182,7 +185,7 @@ fun GboardQwertyView(
                 iconPackType = iconPackType,
                 theme = theme,
                 weight = 3.6f,
-                height = 50.dp,
+                height = keyHeight,
                 testTagId = "key_spacebar",
                 onKeyTriggered = { onKeyPressed(" ") }
             )
@@ -193,7 +196,7 @@ fun GboardQwertyView(
                 iconPackType = iconPackType,
                 theme = theme,
                 weight = 0.9f,
-                height = 50.dp,
+                height = keyHeight,
                 onKeyTriggered = { onKeyPressed(".") }
             )
 
@@ -207,7 +210,7 @@ fun GboardQwertyView(
                 isAccent = !isRetro95,
                 isAlt = isRetro95,
                 weight = 1.45f,
-                height = 50.dp,
+                height = keyHeight,
                 testTagId = "key_send_return",
                 onKeyTriggered = onSendOrEnter
             )
