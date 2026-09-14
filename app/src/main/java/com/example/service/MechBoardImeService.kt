@@ -147,10 +147,11 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                     var iconPackType by remember { mutableStateOf(IconPackType.WHATSAPP_EXPRESSIVE) }
                     var isSoundOn by remember { mutableStateOf(true) }
                     var isHapticOn by remember { mutableStateOf(true) }
+                    var isAutocorrectOn by remember { mutableStateOf(true) }
                     var keyHeight by remember { mutableStateOf(50.dp) }
                     var showSettingsDialog by remember { mutableStateOf(false) }
                     var activeWord by remember { mutableStateOf("") }
-                    val currentSuggestions = remember(activeWord) {
+                    val currentSuggestions = remember(activeWord, isAutocorrectOn) {
                         if (activeWord.isBlank()) {
                             listOf("the", "to", "and", "hello", "keyboard")
                         } else {
@@ -239,7 +240,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                             if (key == " ") {
                                                 val candidates = AutocorrectEngine.getCorrections(activeWord)
                                                 val autoCorrect = candidates.firstOrNull { it.isAutoCorrect }
-                                                if (autoCorrect != null && activeWord.isNotEmpty() && !activeWord.equals(autoCorrect.word, ignoreCase = true)) {
+                                                if (isAutocorrectOn && autoCorrect != null && activeWord.isNotEmpty() && !activeWord.equals(autoCorrect.word, ignoreCase = true)) {
                                                     currentInputConnection?.deleteSurroundingText(activeWord.length, 0)
                                                     currentInputConnection?.commitText("${autoCorrect.word} ", 1)
                                                 } else {
@@ -349,6 +350,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                 soundEngine = audioEngine,
                                 isSoundOn = isSoundOn,
                                 isHapticOn = isHapticOn,
+                                isAutocorrectOn = isAutocorrectOn,
                                 isImeEnabled = true,
                                 isImeSelected = true,
                                 onUpdateKeyHeight = { keyHeight = it },
@@ -362,6 +364,9 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                 onToggleHaptic = {
                                     isHapticOn = it
                                     audioEngine.isHapticEnabled = it
+                                },
+                                onToggleAutocorrect = {
+                                    isAutocorrectOn = it
                                 },
                                 onUpdateVolume = { audioEngine.volumeLevel = it },
                                 onUpdateHapticStrength = { audioEngine.hapticStrength = it },

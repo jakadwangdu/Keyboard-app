@@ -33,6 +33,7 @@ fun MainKeyboardScreen(
     val keyHeight by viewModel.keyHeight.collectAsStateWithLifecycle()
     val showSettingsDialog by viewModel.showSettingsDialog.collectAsStateWithLifecycle()
     val isHapticOn by viewModel.isHapticOn.collectAsStateWithLifecycle()
+    val isAutocorrectOn by viewModel.isAutocorrectOn.collectAsStateWithLifecycle()
     val currentSwitch by viewModel.currentSwitch.collectAsStateWithLifecycle()
     val isShiftActive by viewModel.isShiftActive.collectAsStateWithLifecycle()
     val isCapsLock by viewModel.isCapsLock.collectAsStateWithLifecycle()
@@ -195,6 +196,7 @@ fun MainKeyboardScreen(
                 soundEngine = viewModel.audioEngine,
                 isSoundOn = isSoundOn,
                 isHapticOn = isHapticOn,
+                isAutocorrectOn = isAutocorrectOn,
                 isImeEnabled = viewModel.isImeEnabled(),
                 isImeSelected = viewModel.isImeSelected(),
                 onUpdateKeyHeight = { viewModel.setKeyHeight(it) },
@@ -203,6 +205,7 @@ fun MainKeyboardScreen(
                 onSelectIconPack = { viewModel.setIconPack(it) },
                 onToggleSound = { viewModel.setSoundEnabled(it) },
                 onToggleHaptic = { viewModel.setHapticEnabled(it) },
+                onToggleAutocorrect = { viewModel.setAutocorrectEnabled(it) },
                 onUpdateVolume = { viewModel.setSoundVolume(it) },
                 onUpdateHapticStrength = { viewModel.setHapticStrength(it) },
                 onOpenDefaultKeyboardSetup = { showDefaultKeyboardDialog = true },

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Height
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
@@ -58,6 +59,7 @@ fun KeyboardSettingsDialog(
     soundEngine: MechanicalAudioEngine,
     isSoundOn: Boolean,
     isHapticOn: Boolean,
+    isAutocorrectOn: Boolean = true,
     isImeEnabled: Boolean = false,
     isImeSelected: Boolean = false,
     onUpdateKeyHeight: (Dp) -> Unit,
@@ -66,6 +68,7 @@ fun KeyboardSettingsDialog(
     onSelectIconPack: (IconPackType) -> Unit,
     onToggleSound: (Boolean) -> Unit,
     onToggleHaptic: (Boolean) -> Unit,
+    onToggleAutocorrect: (Boolean) -> Unit = {},
     onUpdateVolume: (Float) -> Unit,
     onUpdateHapticStrength: (Float) -> Unit,
     onOpenDefaultKeyboardSetup: () -> Unit,
@@ -74,6 +77,7 @@ fun KeyboardSettingsDialog(
     var selectedHeight by remember { mutableStateOf(currentKeyHeight.value) }
     var soundEnabled by remember { mutableStateOf(isSoundOn) }
     var hapticEnabled by remember { mutableStateOf(isHapticOn) }
+    var autocorrectEnabled by remember { mutableStateOf(isAutocorrectOn) }
     var volume by remember { mutableStateOf(soundEngine.volumeLevel) }
     var hapticStrength by remember { mutableStateOf(soundEngine.hapticStrength) }
 
@@ -345,6 +349,101 @@ fun KeyboardSettingsDialog(
                                                 color = textColor,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // SECTION: WORD CORRECTOR & SPELL CHECK
+                    SettingsSection(
+                        title = "Word Corrector & Auto-Correction",
+                        icon = Icons.Default.Spellcheck,
+                        accentColor = accentColor,
+                        textColor = textColor
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = cardBg,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Auto-Correction",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = textColor
+                                            )
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = if (autocorrectEnabled) Color(0xFF00E676).copy(alpha = 0.18f) else textColor.copy(alpha = 0.1f)
+                                            ) {
+                                                Text(
+                                                    text = if (autocorrectEnabled) "ON" else "OFF",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (autocorrectEnabled) Color(0xFF00E676) else textColor.copy(alpha = 0.5f),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = "Corrects typos (e.g. 'macanical' → 'mechanical', 'teh' → 'the') when pressing space",
+                                            fontSize = 11.5.sp,
+                                            color = textColor.copy(alpha = 0.65f),
+                                            lineHeight = 15.sp,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Switch(
+                                        checked = autocorrectEnabled,
+                                        onCheckedChange = {
+                                            autocorrectEnabled = it
+                                            onToggleAutocorrect(it)
+                                            soundEngine.playKeyPressSound(currentSwitch)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = accentColor,
+                                            checkedTrackColor = accentColor.copy(alpha = 0.4f)
+                                        ),
+                                        modifier = Modifier.testTag("toggle_autocorrect_switch")
+                                    )
+                                }
+
+                                if (autocorrectEnabled) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = accentColor.copy(alpha = 0.08f),
+                                        border = androidx.compose.foundation.BorderStroke(0.8.dp, accentColor.copy(alpha = 0.25f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(text = "✨", fontSize = 13.sp)
+                                            Text(
+                                                text = "Active: Top corrections are marked with ✨ in the suggestion strip and applied automatically when spacebar is tapped.",
+                                                fontSize = 11.sp,
+                                                color = textColor.copy(alpha = 0.85f),
+                                                lineHeight = 14.sp
                                             )
                                         }
                                     }

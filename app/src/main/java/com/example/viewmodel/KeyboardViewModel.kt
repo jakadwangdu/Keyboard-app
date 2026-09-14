@@ -66,6 +66,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _isHapticOn = MutableStateFlow(true)
     val isHapticOn: StateFlow<Boolean> = _isHapticOn.asStateFlow()
 
+    private val _isAutocorrectOn = MutableStateFlow(true)
+    val isAutocorrectOn: StateFlow<Boolean> = _isAutocorrectOn.asStateFlow()
+
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions: StateFlow<List<String>> = _suggestions.asStateFlow()
 
@@ -137,14 +140,14 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     fun typeKey(key: String) {
         val current = _activeText.value
 
-        // If user tapped Spacebar, check if the current word has an autocorrect suggestion
+        // If user tapped Spacebar, check if autocorrect is enabled and the current word has an autocorrect suggestion
         if (key == " ") {
             val words = current.split(" ").toMutableList()
             val lastWord = words.lastOrNull()?.trim() ?: ""
             val activeCandidates = _candidates.value
             val autoCorrectMatch = activeCandidates.firstOrNull { it.isAutoCorrect }
 
-            if (lastWord.isNotEmpty() && autoCorrectMatch != null && !lastWord.equals(autoCorrectMatch.word, ignoreCase = true)) {
+            if (_isAutocorrectOn.value && lastWord.isNotEmpty() && autoCorrectMatch != null && !lastWord.equals(autoCorrectMatch.word, ignoreCase = true)) {
                 // Auto-correct misspelled word on spacebar tap!
                 words[words.size - 1] = autoCorrectMatch.word
                 _activeText.value = words.joinToString(" ") + " "
@@ -205,7 +208,13 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
             return
         }
 
-        val candidatesList = AutocorrectEngine.getCorrections(lastWord)
+        val rawCandidates = AutocorrectEngine.getCorrections(lastWord)
+        val candidatesList = if (_isAutocorrectOn.value) {
+            rawCandidates
+        } else {
+            // When autocorrect is turned off, do not flag words for auto-correction on space
+            rawCandidates.map { it.copy(isAutoCorrect = false) }
+        }
         _candidates.value = candidatesList
         _suggestions.value = candidatesList.map { it.word }
     }
@@ -386,6 +395,17 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         val next = !_isHapticOn.value
         _isHapticOn.value = next
         audioEngine.isHapticEnabled = next
+    }
+
+    fun setAutocorrectEnabled(enabled: Boolean) {
+        _isAutocorrectOn.value = enabled
+        updateSuggestions(_activeText.value)
+    }
+
+    fun toggleAutocorrect() {
+        val next = !_isAutocorrectOn.value
+        _isAutocorrectOn.value = next
+        updateSuggestions(_activeText.value)
     }
 
     fun setSoundEnabled(enabled: Boolean) {
