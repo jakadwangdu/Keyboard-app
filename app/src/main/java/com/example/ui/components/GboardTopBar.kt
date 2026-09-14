@@ -59,8 +59,9 @@ fun GboardTopBar(
             .background(barBg)
             .testTag("gboard_top_bar")
     ) {
-        // 1. Gboard Predictive Word Suggestion Strip (if typing)
+        // 1. Gboard Predictive Word Suggestion & Spell Correction Strip (if typing)
         if (suggestions.isNotEmpty() && !isVoiceTyping) {
+            val lastWord = activeText.split(" ").lastOrNull() ?: ""
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -70,25 +71,38 @@ fun GboardTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                suggestions.forEach { word ->
+                suggestions.forEachIndexed { index, word ->
+                    val isAutocorrectMatch = index == 0 && lastWord.isNotBlank() && !word.equals(lastWord, ignoreCase = true)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = Color(theme.keyCapAltHex).copy(alpha = 0.7f),
+                        color = if (isAutocorrectMatch) accentColor.copy(alpha = 0.22f) else Color(theme.keyCapAltHex).copy(alpha = 0.7f),
+                        border = if (isAutocorrectMatch) androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.6f)) else null,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { onSuggestionClick(word) }
                     ) {
-                        Text(
-                            text = word,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = textColor,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                        ) {
+                            if (isAutocorrectMatch) {
+                                Text(
+                                    text = "✨",
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Text(
+                                text = word,
+                                fontSize = 13.sp,
+                                fontWeight = if (isAutocorrectMatch) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isAutocorrectMatch) accentColor else textColor
+                            )
+                        }
                     }
                 }
             }
-            Divider(color = textColor.copy(alpha = 0.08f), thickness = 0.5.dp)
+            HorizontalDivider(color = textColor.copy(alpha = 0.08f), thickness = 0.5.dp)
         }
 
         // 2. Interactive Voice Dictation Waveform Mode (if active)
@@ -275,17 +289,17 @@ fun GboardTopBar(
                     }
                 }
             } else {
-                // 3. Main Gboard Conversation Toolbar Ribbon
+                // 3. Main Gboard Minimal Toolbar Ribbon
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp)
+                        .height(40.dp)
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 6.dp),
+                        .padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Keyboard Settings & Resize icon
+                    // Quick Settings & Resizing
                     ToolbarIconItem(
                         glyph = AppIconGlyph.SETTINGS,
                         packType = iconPackType,
@@ -295,29 +309,11 @@ fun GboardTopBar(
                         onClick = onOpenSettings
                     )
 
-                    // Set as Default Keyboard (System IME Setup)
-                    ToolbarChipItem(
-                        label = "⌨️ Set Default",
-                        accentColor = Color(0xFF00E676),
-                        textColor = Color.White,
-                        onClick = onOpenDefaultKeyboardSetup
-                    )
-
-                    // WhatsApp-Style Attachments button (Paperclip)
-                    ToolbarIconItem(
-                        glyph = AppIconGlyph.ATTACHMENT,
-                        packType = iconPackType,
-                        tint = if (keyboardMode == KeyboardMode.ATTACHMENTS_SHEET) accentColor else textColor,
-                        badgeText = null,
-                        tooltip = "Attachments",
-                        onClick = onOpenAttachments
-                    )
-
                     // Conversation Emoji & Sticker Drawer
                     ToolbarIconItem(
                         glyph = AppIconGlyph.EMOJI,
                         packType = iconPackType,
-                        tint = if (keyboardMode == KeyboardMode.EMOJI_DRAWER || keyboardMode == KeyboardMode.STICKERS_DRAWER) accentColor else textColor,
+                        tint = if (keyboardMode == KeyboardMode.EMOJI_DRAWER || keyboardMode == KeyboardMode.STICKERS_DRAWER) accentColor else textColor.copy(alpha = 0.8f),
                         badgeText = null,
                         tooltip = "Emojis & Stickers",
                         onClick = onOpenEmoji
@@ -327,9 +323,9 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.SWITCH_STUDIO,
                         packType = iconPackType,
-                        tint = Color(currentSwitch.accentHex),
-                        badgeText = currentSwitch.title.split(" ").firstOrNull(),
-                        tooltip = "Switch Acoustics",
+                        tint = textColor.copy(alpha = 0.8f),
+                        badgeText = null,
+                        tooltip = "Switch Acoustics (${currentSwitch.title})",
                         onClick = onOpenSwitchStudio
                     )
 
@@ -337,33 +333,30 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.THEME,
                         packType = iconPackType,
-                        tint = textColor,
+                        tint = textColor.copy(alpha = 0.8f),
                         badgeText = null,
                         tooltip = "Themes",
                         onClick = onOpenThemePicker
-                    )
-
-                    // Icon Pack Selector (WhatsApp / Android 17 / iOS SF / 1995 Pixel)
-                    ToolbarChipItem(
-                        label = when (iconPackType) {
-                            IconPackType.RETRO_PIXEL_95 -> "1995 Pixel"
-                            IconPackType.WHATSAPP_EXPRESSIVE -> "WhatsApp Pack"
-                            IconPackType.ANDROID_17 -> "Android 17"
-                            IconPackType.IOS_SF -> "iOS SF"
-                        },
-                        accentColor = accentColor,
-                        textColor = textColor,
-                        onClick = onToggleIconPack
                     )
 
                     // Clipboard Manager
                     ToolbarIconItem(
                         glyph = AppIconGlyph.CLIPBOARD,
                         packType = iconPackType,
-                        tint = if (keyboardMode == KeyboardMode.CLIPBOARD_DRAWER) accentColor else textColor,
+                        tint = if (keyboardMode == KeyboardMode.CLIPBOARD_DRAWER) accentColor else textColor.copy(alpha = 0.8f),
                         badgeText = null,
                         tooltip = "Clipboard",
                         onClick = onOpenClipboard
+                    )
+
+                    // WhatsApp-Style Attachments button
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.ATTACHMENT,
+                        packType = iconPackType,
+                        tint = if (keyboardMode == KeyboardMode.ATTACHMENTS_SHEET) accentColor else textColor.copy(alpha = 0.8f),
+                        badgeText = null,
+                        tooltip = "Attachments",
+                        onClick = onOpenAttachments
                     )
 
                     // Text Formatting Shortcuts (Bold, Italic, Code, Quote)
@@ -377,7 +370,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = if (isSoundOn) AppIconGlyph.SOUND_ON else AppIconGlyph.SOUND_OFF,
                         packType = iconPackType,
-                        tint = if (isSoundOn) accentColor else textColor.copy(alpha = 0.5f),
+                        tint = if (isSoundOn) accentColor else textColor.copy(alpha = 0.4f),
                         badgeText = null,
                         tooltip = "Sound Toggle",
                         onClick = onToggleSound
@@ -387,7 +380,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.MIC,
                         packType = iconPackType,
-                        tint = textColor,
+                        tint = textColor.copy(alpha = 0.8f),
                         badgeText = null,
                         tooltip = "Voice Typing",
                         onClick = onToggleVoiceTyping

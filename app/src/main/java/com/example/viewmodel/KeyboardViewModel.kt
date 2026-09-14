@@ -9,6 +9,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.MechanicalAudioEngine
+import com.example.engine.AutocorrectEngine
+import com.example.engine.CorrectionCandidate
 import com.example.model.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,6 +68,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions: StateFlow<List<String>> = _suggestions.asStateFlow()
+
+    private val _candidates = MutableStateFlow<List<CorrectionCandidate>>(emptyList())
+    val candidates: StateFlow<List<CorrectionCandidate>> = _candidates.asStateFlow()
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
@@ -131,6 +136,32 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     fun typeKey(key: String) {
         val current = _activeText.value
+
+        // If user tapped Spacebar, check if the current word has an autocorrect suggestion
+        if (key == " ") {
+            val words = current.split(" ").toMutableList()
+            val lastWord = words.lastOrNull()?.trim() ?: ""
+            val activeCandidates = _candidates.value
+            val autoCorrectMatch = activeCandidates.firstOrNull { it.isAutoCorrect }
+
+            if (lastWord.isNotEmpty() && autoCorrectMatch != null && !lastWord.equals(autoCorrectMatch.word, ignoreCase = true)) {
+                // Auto-correct misspelled word on spacebar tap!
+                words[words.size - 1] = autoCorrectMatch.word
+                _activeText.value = words.joinToString(" ") + " "
+                _suggestions.value = emptyList()
+                _candidates.value = emptyList()
+                audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
+                return
+            }
+
+            val updated = current + " "
+            _activeText.value = updated
+            _suggestions.value = emptyList()
+            _candidates.value = emptyList()
+            audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.95f)
+            return
+        }
+
         val updated = current + key
         _activeText.value = updated
 
@@ -142,7 +173,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         // Trigger mechanical audio
         audioEngine.playKeyPressSound(_currentSwitch.value)
 
-        // Compute predictive suggestions
+        // Compute predictive suggestions & spell checking
         updateSuggestions(updated)
     }
 
@@ -164,19 +195,19 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private fun updateSuggestions(text: String) {
         if (text.isBlank()) {
             _suggestions.value = emptyList()
+            _candidates.value = emptyList()
             return
         }
         val lastWord = text.split(" ").lastOrNull() ?: ""
         if (lastWord.isBlank()) {
             _suggestions.value = listOf("the", "you", "thanks", "sounds great", "let's go")
+            _candidates.value = emptyList()
             return
         }
-        val matches = dictionary.filter { it.startsWith(lastWord, ignoreCase = true) && !it.equals(lastWord, ignoreCase = true) }.take(5)
-        if (matches.isNotEmpty()) {
-            _suggestions.value = matches
-        } else {
-            _suggestions.value = listOf(lastWord.capitalize(Locale.ROOT), "$lastWord!", "$lastWord?")
-        }
+
+        val candidatesList = AutocorrectEngine.getCorrections(lastWord)
+        _candidates.value = candidatesList
+        _suggestions.value = candidatesList.map { it.word }
     }
 
     fun applySuggestion(word: String) {
@@ -190,6 +221,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         _activeText.value = words.joinToString(" ") + " "
         audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
         _suggestions.value = emptyList()
+        _candidates.value = emptyList()
     }
 
     fun sendMessage() {

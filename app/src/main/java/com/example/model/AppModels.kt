@@ -96,6 +96,32 @@ enum class KeyboardThemeType(
     val contactBubbleHex: Long,
     val isDark: Boolean
 ) {
+    MINIMAL_DARK(
+        displayName = "Minimal Slate Dark",
+        backgroundHex = 0xFF121214,
+        surfaceHex = 0xFF18181B,
+        keyCapHex = 0xFF27272A,
+        keyCapAltHex = 0xFF3F3F46,
+        keyTextHex = 0xFFF4F4F5,
+        accentHex = 0xFF00E676,
+        chatBackgroundHex = 0xFF121214,
+        userBubbleHex = 0xFF27272A,
+        contactBubbleHex = 0xFF18181B,
+        isDark = true
+    ),
+    MINIMAL_LIGHT(
+        displayName = "Minimal Pure Light",
+        backgroundHex = 0xFFF8F9FA,
+        surfaceHex = 0xFFF1F3F5,
+        keyCapHex = 0xFFFFFFFF,
+        keyCapAltHex = 0xFFE9ECEF,
+        keyTextHex = 0xFF212529,
+        accentHex = 0xFF25D366,
+        chatBackgroundHex = 0xFFF8F9FA,
+        userBubbleHex = 0xFFE9ECEF,
+        contactBubbleHex = 0xFFFFFFFF,
+        isDark = false
+    ),
     AMOLED_BLACK(
         displayName = "AMOLED Pitch Dark",
         backgroundHex = 0xFF000000,

@@ -19,6 +19,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.audio.MechanicalAudioEngine
+import com.example.engine.AutocorrectEngine
 import com.example.model.IconPackType
 import com.example.model.KeyboardMode
 import com.example.model.KeyboardThemeType
@@ -148,6 +149,14 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                     var isHapticOn by remember { mutableStateOf(true) }
                     var keyHeight by remember { mutableStateOf(50.dp) }
                     var showSettingsDialog by remember { mutableStateOf(false) }
+                    var activeWord by remember { mutableStateOf("") }
+                    val currentSuggestions = remember(activeWord) {
+                        if (activeWord.isBlank()) {
+                            listOf("the", "to", "and", "hello", "keyboard")
+                        } else {
+                            AutocorrectEngine.getCorrections(activeWord).map { it.word }
+                        }
+                    }
 
                     Column(
                         modifier = Modifier
@@ -160,12 +169,16 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                             currentSwitch = currentSwitch,
                             keyboardMode = currentMode,
                             isSoundOn = isSoundOn,
-                            activeText = "",
-                            suggestions = listOf("the", "to", "and", "hello", "keyboard"),
+                            activeText = activeWord,
+                            suggestions = currentSuggestions,
                             isVoiceTyping = false,
                             onSuggestionClick = { word ->
                                 audioEngine.playKeyPressSound(currentSwitch)
+                                if (activeWord.isNotEmpty()) {
+                                    currentInputConnection?.deleteSurroundingText(activeWord.length, 0)
+                                }
                                 currentInputConnection?.commitText("$word ", 1)
+                                activeWord = ""
                             },
                             onToggleIconPack = {
                                 iconPackType = when (iconPackType) {
@@ -223,16 +236,33 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                         keyHeight = keyHeight,
                                         onKeyPressed = { key ->
                                             audioEngine.playKeyPressSound(currentSwitch)
-                                            currentInputConnection?.commitText(key, 1)
+                                            if (key == " ") {
+                                                val candidates = AutocorrectEngine.getCorrections(activeWord)
+                                                val autoCorrect = candidates.firstOrNull { it.isAutoCorrect }
+                                                if (autoCorrect != null && activeWord.isNotEmpty() && !activeWord.equals(autoCorrect.word, ignoreCase = true)) {
+                                                    currentInputConnection?.deleteSurroundingText(activeWord.length, 0)
+                                                    currentInputConnection?.commitText("${autoCorrect.word} ", 1)
+                                                } else {
+                                                    currentInputConnection?.commitText(" ", 1)
+                                                }
+                                                activeWord = ""
+                                            } else {
+                                                activeWord += key
+                                                currentInputConnection?.commitText(key, 1)
+                                            }
                                             if (isShiftActive && !isCapsLock) {
                                                 isShiftActive = false
                                             }
                                         },
                                         onBackspace = {
                                             audioEngine.playKeyPressSound(currentSwitch)
+                                            if (activeWord.isNotEmpty()) {
+                                                activeWord = activeWord.dropLast(1)
+                                            }
                                             handleBackspace()
                                         },
                                         onSendOrEnter = {
+                                            activeWord = ""
                                             audioEngine.playKeyPressSound(currentSwitch)
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
