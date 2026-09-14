@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/app_launcher_icon_1789328536804"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 76,25 L 52,25 L 32,45 L 32,63 L 52,83 L 76,83 L 76,69 L 58,69 L 46,57 L 46,51 L 58,39 L 76,39 Z" />
+    <path
+        android:fillColor="#18FFFF"
+        android:pathData="M 52,61 L 70,50 L 74,56 L 56,67 Z" />
+</vector>

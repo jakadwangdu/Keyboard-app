@@ -33,7 +33,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _iconPackType = MutableStateFlow(IconPackType.WHATSAPP_EXPRESSIVE)
     val iconPackType: StateFlow<IconPackType> = _iconPackType.asStateFlow()
 
-    private val _keyboardTheme = MutableStateFlow(KeyboardThemeType.AMOLED_BLACK)
+    private val _keyboardTheme = MutableStateFlow(KeyboardThemeType.MINIMAL_DARK)
     val keyboardTheme: StateFlow<KeyboardThemeType> = _keyboardTheme.asStateFlow()
 
     private val _keyHeight = MutableStateFlow(50.dp)

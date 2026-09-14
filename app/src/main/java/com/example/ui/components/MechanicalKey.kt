@@ -125,29 +125,35 @@ fun RowScope.MechanicalKey(
             },
         contentAlignment = Alignment.Center
     ) {
+        val isMinimal = theme == KeyboardThemeType.MINIMAL_DARK || theme == KeyboardThemeType.MINIMAL_LIGHT
+
         // 1. Layer 0: Deep Plate Cavity & Drop Shadow
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset(y = if (isRetro95) 2.dp else 3.8.dp)
-                .clip(RoundedCornerShape(cornerRadius))
-                .background(basePlateShadowColor)
-        )
+        if (!isMinimal) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(y = if (isRetro95) 2.dp else 3.8.dp)
+                    .clip(RoundedCornerShape(cornerRadius))
+                    .background(basePlateShadowColor)
+            )
+        }
 
         // 2. Layer 1: 3D Keycap Skirt (Lower Bevel Housing)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset(y = if (isRetro95) 1.2.dp else 2.4.dp)
-                .clip(RoundedCornerShape(cornerRadius))
-                .background(
-                    if (isRetro95) {
-                        if (isPressed) Color(0xFF808080) else Color(0xFF404040)
-                    } else {
-                        bottomSkirtColor
-                    }
-                )
-        )
+        if (!isMinimal) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(y = if (isRetro95) 1.2.dp else 2.4.dp)
+                    .clip(RoundedCornerShape(cornerRadius))
+                    .background(
+                        if (isRetro95) {
+                            if (isPressed) Color(0xFF808080) else Color(0xFF404040)
+                        } else {
+                            bottomSkirtColor
+                        }
+                    )
+            )
+        }
 
         // 3. Layer 2: 3D Sculpted Keycap Top Surface with Travel Offset
         Box(
@@ -155,28 +161,36 @@ fun RowScope.MechanicalKey(
                 .fillMaxSize()
                 .offset(y = travelOffset.dp)
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(
-                    if (theme == KeyboardThemeType.CYBERPUNK_MECH && isAccent) {
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0xFFFF0055),
-                                Color(0xFF80002A)
+                .then(
+                    if (isMinimal) {
+                        Modifier.background(if (isPressed) keyCapColor.copy(alpha = 0.8f) else keyCapColor)
+                    } else if (theme == KeyboardThemeType.CYBERPUNK_MECH && isAccent) {
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFFFF0055),
+                                    Color(0xFF80002A)
+                                )
                             )
                         )
                     } else if (isRetro95) {
-                        Brush.verticalGradient(
-                            listOf(
-                                if (isPressed) Color(0xFFB4B0A8) else Color(0xFFF0ECE4),
-                                if (isPressed) Color(0xFF9E9A92) else Color(0xFFD4D0C8)
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    if (isPressed) Color(0xFFB4B0A8) else Color(0xFFF0ECE4),
+                                    if (isPressed) Color(0xFF9E9A92) else Color(0xFFD4D0C8)
+                                )
                             )
                         )
                     } else {
                         // Authentic 3D mechanical keycap gradient with top specular shine & dish curve
-                        Brush.verticalGradient(
-                            0.0f to keyCapColor.copy(alpha = 1f),
-                            0.15f to keyCapColor,
-                            0.75f to (if (theme.isDark) keyCapColor.copy(alpha = 0.92f) else keyCapColor.copy(alpha = 0.95f)),
-                            1.0f to (if (theme.isDark) Color(0xFF0A0C0E) else Color(0xFFB0B8C0))
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                0.0f to keyCapColor.copy(alpha = 1f),
+                                0.15f to keyCapColor,
+                                0.75f to (if (theme.isDark) keyCapColor.copy(alpha = 0.92f) else keyCapColor.copy(alpha = 0.95f)),
+                                1.0f to (if (theme.isDark) Color(0xFF0A0C0E) else Color(0xFFB0B8C0))
+                            )
                         )
                     }
                 )
@@ -187,12 +201,8 @@ fun RowScope.MechanicalKey(
                             color = if (isPressed) Color(0xFF404040) else Color(0xFFFFFFFF),
                             shape = RoundedCornerShape(cornerRadius)
                         )
-                    } else if (theme == KeyboardThemeType.MINIMAL_DARK || theme == KeyboardThemeType.MINIMAL_LIGHT) {
-                        Modifier.border(
-                            width = 0.8.dp,
-                            color = if (isPressed) Color(theme.accentHex).copy(alpha = 0.6f) else topRimHighlight,
-                            shape = RoundedCornerShape(cornerRadius)
-                        )
+                    } else if (isMinimal) {
+                        Modifier
                     } else if (theme == KeyboardThemeType.AMOLED_BLACK) {
                         Modifier.border(
                             width = 1.dp,
@@ -221,13 +231,19 @@ fun RowScope.MechanicalKey(
                     .fillMaxSize()
                     .padding(horizontal = 2.dp, vertical = 2.dp)
                     .clip(RoundedCornerShape(cornerRadius - 2.dp))
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                dishShadow
+                    .then(
+                        if (isMinimal) {
+                            Modifier.background(Color.Transparent)
+                        } else {
+                            Modifier.background(
+                                Brush.radialGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        dishShadow
+                                    )
+                                )
                             )
-                        )
+                        }
                     )
             ) {
                 // Top-right superscript number hint

@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "MechBoard"
+rootProject.name = "Clacksy"
 
 include(":app")
