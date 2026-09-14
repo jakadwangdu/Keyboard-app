@@ -81,7 +81,10 @@ fun AppIcon(
     tint: Color = Color.Unspecified,
     size: Dp = 22.dp
 ) {
-    val actualTint = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurface else tint
+    val actualTint = when {
+        tint != Color.Unspecified && tint.alpha > 0.05f -> tint
+        else -> MaterialTheme.colorScheme.onSurface.takeIf { it != Color.Unspecified } ?: Color(0xFFF4F4F5)
+    }
 
     when (packType) {
         IconPackType.RETRO_PIXEL_95 -> {
@@ -108,18 +111,17 @@ private fun RetroPixelIcon(
 ) {
     when (glyph) {
         AppIconGlyph.MASCOT_ROBOT -> {
-            // Pixel yellow mascot/robot head matching reference image
             Box(
                 modifier = modifier
                     .size(size)
-                    .background(Color(0xFFFFD700), RoundedCornerShape(2.dp)),
+                    .background(Color(0xFFFFD700), RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "•‿•",
-                    color = Color.Black,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    fontSize = (size.value * 0.45f).sp
+                Icon(
+                    imageVector = Icons.Default.SmartToy,
+                    contentDescription = "Robot Mascot",
+                    tint = Color.Black,
+                    modifier = Modifier.size(size * 0.8f)
                 )
             }
         }
@@ -219,6 +221,70 @@ private fun RetroPixelIcon(
                 modifier = modifier.size(size)
             )
         }
+        AppIconGlyph.SETTINGS -> {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
+        AppIconGlyph.THEME -> {
+            Icon(
+                imageVector = Icons.Default.Palette,
+                contentDescription = "Theme",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
+        AppIconGlyph.SWITCH_STUDIO -> {
+            Icon(
+                imageVector = Icons.Default.GraphicEq,
+                contentDescription = "Switch Studio",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
+        AppIconGlyph.SOUND_ON -> {
+            Icon(
+                imageVector = Icons.Default.VolumeUp,
+                contentDescription = "Sound On",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
+        AppIconGlyph.SOUND_OFF -> {
+            Icon(
+                imageVector = Icons.Default.VolumeOff,
+                contentDescription = "Sound Off",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
+        AppIconGlyph.CLIPBOARD -> {
+            Icon(
+                imageVector = Icons.Default.ContentPaste,
+                contentDescription = "Clipboard",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
+        AppIconGlyph.CLEAR -> {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Clear",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
+        AppIconGlyph.LOCK_ENCRYPTED -> {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = "Lock",
+                tint = tint,
+                modifier = modifier.size(size)
+            )
+        }
         else -> {
             WhatsAppIcon(glyph = glyph, tint = tint, size = size, modifier = modifier)
         }
@@ -238,7 +304,7 @@ private fun WhatsAppIcon(
         AppIconGlyph.SHIFT -> Icons.Default.ArrowUpward
         AppIconGlyph.ATTACHMENT -> Icons.Default.AttachFile
         AppIconGlyph.EMOJI -> Icons.Default.Mood
-        AppIconGlyph.STICKER -> Icons.Default.StickyNote2
+        AppIconGlyph.STICKER -> Icons.Default.AutoAwesome
         AppIconGlyph.GIF -> Icons.Default.Gif
         AppIconGlyph.MIC -> Icons.Default.Mic
         AppIconGlyph.CAMERA -> Icons.Default.CameraAlt
@@ -250,8 +316,8 @@ private fun WhatsAppIcon(
         AppIconGlyph.PAYMENT -> Icons.Default.Payments
         AppIconGlyph.CLIPBOARD -> Icons.Default.ContentPaste
         AppIconGlyph.TRANSLATE -> Icons.Default.Translate
-        AppIconGlyph.TEXT_FORMAT -> Icons.Default.FormatColorText
-        AppIconGlyph.SETTINGS -> Icons.Default.Tune
+        AppIconGlyph.TEXT_FORMAT -> Icons.Default.TextFields
+        AppIconGlyph.SETTINGS -> Icons.Default.Settings
         AppIconGlyph.SEARCH -> Icons.Default.Search
         AppIconGlyph.THEME -> Icons.Default.Palette
         AppIconGlyph.SWITCH_STUDIO -> Icons.Default.GraphicEq
@@ -271,9 +337,9 @@ private fun WhatsAppIcon(
         AppIconGlyph.REACTION_LAUGH -> Icons.Default.SentimentVerySatisfied
         AppIconGlyph.REACTION_THUMBS_UP -> Icons.Default.ThumbUp
         AppIconGlyph.REACTION_FIRE -> Icons.Default.LocalFireDepartment
-        AppIconGlyph.REACTION_WOW -> Icons.Default.SentimentNeutral
+        AppIconGlyph.REACTION_WOW -> Icons.Default.Star
         AppIconGlyph.REACTION_SAD -> Icons.Default.SentimentDissatisfied
-        AppIconGlyph.REACTION_PRAY -> Icons.Default.VolunteerActivism
+        AppIconGlyph.REACTION_PRAY -> Icons.Default.Favorite
         AppIconGlyph.PUZZLE -> Icons.Default.Extension
         AppIconGlyph.FLOPPY_DISK -> Icons.Default.Save
         AppIconGlyph.HEX_NUT -> Icons.Default.Settings
@@ -304,44 +370,44 @@ private fun Android17Icon(
         AppIconGlyph.ATTACHMENT -> Icons.Default.AddCircleOutline
         AppIconGlyph.EMOJI -> Icons.Default.EmojiEmotions
         AppIconGlyph.STICKER -> Icons.Default.AutoAwesome
-        AppIconGlyph.GIF -> Icons.Default.GifBox
+        AppIconGlyph.GIF -> Icons.Default.Gif
         AppIconGlyph.MIC -> Icons.Default.MicNone
         AppIconGlyph.CAMERA -> Icons.Default.PhotoCamera
         AppIconGlyph.GALLERY -> Icons.Default.PhotoLibrary
-        AppIconGlyph.DOCUMENT -> Icons.Default.SnippetFolder
+        AppIconGlyph.DOCUMENT -> Icons.Default.Description
         AppIconGlyph.LOCATION -> Icons.Default.NearMe
         AppIconGlyph.CONTACT -> Icons.Default.AccountCircle
         AppIconGlyph.POLL -> Icons.Default.BarChart
-        AppIconGlyph.PAYMENT -> Icons.Default.AccountBalanceWallet
+        AppIconGlyph.PAYMENT -> Icons.Default.CreditCard
         AppIconGlyph.CLIPBOARD -> Icons.Default.Assignment
-        AppIconGlyph.TRANSLATE -> Icons.Default.GTranslate
-        AppIconGlyph.TEXT_FORMAT -> Icons.Default.FormatShapes
-        AppIconGlyph.SETTINGS -> Icons.Default.SettingsSuggest
+        AppIconGlyph.TRANSLATE -> Icons.Default.Translate
+        AppIconGlyph.TEXT_FORMAT -> Icons.Default.TextFields
+        AppIconGlyph.SETTINGS -> Icons.Default.Settings
         AppIconGlyph.SEARCH -> Icons.Default.Search
         AppIconGlyph.THEME -> Icons.Default.ColorLens
-        AppIconGlyph.SWITCH_STUDIO -> Icons.Default.SurroundSound
+        AppIconGlyph.SWITCH_STUDIO -> Icons.Default.GraphicEq
         AppIconGlyph.SOUND_ON -> Icons.Default.VolumeUp
         AppIconGlyph.SOUND_OFF -> Icons.Default.VolumeOff
         AppIconGlyph.CHECK_SINGLE -> Icons.Default.Check
         AppIconGlyph.CHECK_DOUBLE -> Icons.Default.DoneAll
-        AppIconGlyph.LOCK_ENCRYPTED -> Icons.Default.VpnKey
+        AppIconGlyph.LOCK_ENCRYPTED -> Icons.Default.Lock
         AppIconGlyph.GLOBE -> Icons.Default.Public
-        AppIconGlyph.CLEAR -> Icons.Default.Cancel
-        AppIconGlyph.COPY -> Icons.Default.CopyAll
+        AppIconGlyph.CLEAR -> Icons.Default.Close
+        AppIconGlyph.COPY -> Icons.Default.ContentCopy
         AppIconGlyph.FORMAT_BOLD -> Icons.Default.FormatBold
         AppIconGlyph.FORMAT_ITALIC -> Icons.Default.FormatItalic
-        AppIconGlyph.FORMAT_CODE -> Icons.Default.IntegrationInstructions
+        AppIconGlyph.FORMAT_CODE -> Icons.Default.Code
         AppIconGlyph.FORMAT_QUOTE -> Icons.Default.FormatQuote
         AppIconGlyph.REACTION_HEART -> Icons.Default.FavoriteBorder
         AppIconGlyph.REACTION_LAUGH -> Icons.Default.SentimentSatisfiedAlt
-        AppIconGlyph.REACTION_THUMBS_UP -> Icons.Default.ThumbUpOffAlt
-        AppIconGlyph.REACTION_FIRE -> Icons.Default.Whatshot
-        AppIconGlyph.REACTION_WOW -> Icons.Default.Celebration
+        AppIconGlyph.REACTION_THUMBS_UP -> Icons.Default.ThumbUp
+        AppIconGlyph.REACTION_FIRE -> Icons.Default.LocalFireDepartment
+        AppIconGlyph.REACTION_WOW -> Icons.Default.Star
         AppIconGlyph.REACTION_SAD -> Icons.Default.MoodBad
-        AppIconGlyph.REACTION_PRAY -> Icons.Default.Spa
+        AppIconGlyph.REACTION_PRAY -> Icons.Default.Favorite
         AppIconGlyph.PUZZLE -> Icons.Default.Extension
         AppIconGlyph.FLOPPY_DISK -> Icons.Default.Save
-        AppIconGlyph.HEX_NUT -> Icons.Default.SettingsSuggest
+        AppIconGlyph.HEX_NUT -> Icons.Default.Settings
         AppIconGlyph.MASCOT_ROBOT -> Icons.Default.SmartToy
         AppIconGlyph.CHEVRON_DOWN -> Icons.Default.KeyboardArrowDown
         AppIconGlyph.ENTER_ARROW -> Icons.AutoMirrored.Filled.KeyboardReturn
@@ -368,30 +434,30 @@ private fun IosSfIcon(
         AppIconGlyph.SHIFT -> Icons.Default.North
         AppIconGlyph.ATTACHMENT -> Icons.Default.Add
         AppIconGlyph.EMOJI -> Icons.Default.Face
-        AppIconGlyph.STICKER -> Icons.Default.Layers
-        AppIconGlyph.GIF -> Icons.Default.Slideshow
-        AppIconGlyph.MIC -> Icons.Default.GraphicEq
+        AppIconGlyph.STICKER -> Icons.Default.AutoAwesome
+        AppIconGlyph.GIF -> Icons.Default.Gif
+        AppIconGlyph.MIC -> Icons.Default.Mic
         AppIconGlyph.CAMERA -> Icons.Default.Camera
         AppIconGlyph.GALLERY -> Icons.Default.Collections
-        AppIconGlyph.DOCUMENT -> Icons.Default.FolderShared
+        AppIconGlyph.DOCUMENT -> Icons.Default.Description
         AppIconGlyph.LOCATION -> Icons.Default.Navigation
-        AppIconGlyph.CONTACT -> Icons.Default.PermIdentity
-        AppIconGlyph.POLL -> Icons.Default.Leaderboard
+        AppIconGlyph.CONTACT -> Icons.Default.AccountCircle
+        AppIconGlyph.POLL -> Icons.Default.BarChart
         AppIconGlyph.PAYMENT -> Icons.Default.CreditCard
         AppIconGlyph.CLIPBOARD -> Icons.Default.ContentPaste
         AppIconGlyph.TRANSLATE -> Icons.Default.Translate
-        AppIconGlyph.TEXT_FORMAT -> Icons.Default.Title
+        AppIconGlyph.TEXT_FORMAT -> Icons.Default.TextFields
         AppIconGlyph.SETTINGS -> Icons.Default.Settings
         AppIconGlyph.SEARCH -> Icons.Default.Search
         AppIconGlyph.THEME -> Icons.Default.Palette
-        AppIconGlyph.SWITCH_STUDIO -> Icons.Default.Equalizer
-        AppIconGlyph.SOUND_ON -> Icons.Default.VolumeMute
+        AppIconGlyph.SWITCH_STUDIO -> Icons.Default.GraphicEq
+        AppIconGlyph.SOUND_ON -> Icons.Default.VolumeUp
         AppIconGlyph.SOUND_OFF -> Icons.Default.VolumeOff
         AppIconGlyph.CHECK_SINGLE -> Icons.Default.Check
         AppIconGlyph.CHECK_DOUBLE -> Icons.Default.DoneAll
-        AppIconGlyph.LOCK_ENCRYPTED -> Icons.Outlined.Lock
+        AppIconGlyph.LOCK_ENCRYPTED -> Icons.Default.Lock
         AppIconGlyph.GLOBE -> Icons.Default.Language
-        AppIconGlyph.CLEAR -> Icons.Default.Clear
+        AppIconGlyph.CLEAR -> Icons.Default.Close
         AppIconGlyph.COPY -> Icons.Default.ContentCopy
         AppIconGlyph.FORMAT_BOLD -> Icons.Default.FormatBold
         AppIconGlyph.FORMAT_ITALIC -> Icons.Default.FormatItalic
@@ -400,10 +466,10 @@ private fun IosSfIcon(
         AppIconGlyph.REACTION_HEART -> Icons.Default.Favorite
         AppIconGlyph.REACTION_LAUGH -> Icons.Default.Mood
         AppIconGlyph.REACTION_THUMBS_UP -> Icons.Default.ThumbUp
-        AppIconGlyph.REACTION_FIRE -> Icons.Default.Whatshot
+        AppIconGlyph.REACTION_FIRE -> Icons.Default.LocalFireDepartment
         AppIconGlyph.REACTION_WOW -> Icons.Default.Star
         AppIconGlyph.REACTION_SAD -> Icons.Default.SentimentDissatisfied
-        AppIconGlyph.REACTION_PRAY -> Icons.Default.VolunteerActivism
+        AppIconGlyph.REACTION_PRAY -> Icons.Default.Favorite
         AppIconGlyph.PUZZLE -> Icons.Default.Extension
         AppIconGlyph.FLOPPY_DISK -> Icons.Default.Save
         AppIconGlyph.HEX_NUT -> Icons.Default.Settings

@@ -323,7 +323,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.SWITCH_STUDIO,
                         packType = iconPackType,
-                        tint = textColor.copy(alpha = 0.8f),
+                        tint = textColor,
                         badgeText = null,
                         tooltip = "Switch Acoustics (${currentSwitch.title})",
                         onClick = onOpenSwitchStudio
@@ -333,7 +333,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.THEME,
                         packType = iconPackType,
-                        tint = textColor.copy(alpha = 0.8f),
+                        tint = textColor,
                         badgeText = null,
                         tooltip = "Themes",
                         onClick = onOpenThemePicker
@@ -343,7 +343,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.CLIPBOARD,
                         packType = iconPackType,
-                        tint = if (keyboardMode == KeyboardMode.CLIPBOARD_DRAWER) accentColor else textColor.copy(alpha = 0.8f),
+                        tint = if (keyboardMode == KeyboardMode.CLIPBOARD_DRAWER) accentColor else textColor,
                         badgeText = null,
                         tooltip = "Clipboard",
                         onClick = onOpenClipboard
@@ -353,7 +353,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.ATTACHMENT,
                         packType = iconPackType,
-                        tint = if (keyboardMode == KeyboardMode.ATTACHMENTS_SHEET) accentColor else textColor.copy(alpha = 0.8f),
+                        tint = if (keyboardMode == KeyboardMode.ATTACHMENTS_SHEET) accentColor else textColor,
                         badgeText = null,
                         tooltip = "Attachments",
                         onClick = onOpenAttachments
@@ -370,7 +370,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = if (isSoundOn) AppIconGlyph.SOUND_ON else AppIconGlyph.SOUND_OFF,
                         packType = iconPackType,
-                        tint = if (isSoundOn) accentColor else textColor.copy(alpha = 0.4f),
+                        tint = if (isSoundOn) accentColor else textColor.copy(alpha = 0.65f),
                         badgeText = null,
                         tooltip = "Sound Toggle",
                         onClick = onToggleSound
@@ -380,7 +380,7 @@ fun GboardTopBar(
                     ToolbarIconItem(
                         glyph = AppIconGlyph.MIC,
                         packType = iconPackType,
-                        tint = textColor.copy(alpha = 0.8f),
+                        tint = textColor,
                         badgeText = null,
                         tooltip = "Voice Typing",
                         onClick = onToggleVoiceTyping

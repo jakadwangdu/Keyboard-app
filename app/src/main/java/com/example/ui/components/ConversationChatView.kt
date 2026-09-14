@@ -368,10 +368,11 @@ fun ConversationChatView(
                     )
                 }
             } else {
+                val fabContentColor = if (theme == KeyboardThemeType.WHATSAPP_LIGHT || theme == KeyboardThemeType.MINIMAL_LIGHT) Color.White else Color.White
                 FloatingActionButton(
                     onClick = onSendMessage,
                     containerColor = accentColor,
-                    contentColor = if (theme.isDark && theme != KeyboardThemeType.CYBERPUNK_MECH) Color.Black else Color.White,
+                    contentColor = fabContentColor,
                     shape = CircleShape,
                     modifier = Modifier.size(44.dp)
                 ) {
@@ -379,14 +380,14 @@ fun ConversationChatView(
                         AppIcon(
                             glyph = AppIconGlyph.SEND,
                             packType = iconPackType,
-                            tint = if (theme.isDark && theme != KeyboardThemeType.CYBERPUNK_MECH) Color.Black else Color.White,
+                            tint = Color.White,
                             size = 20.dp
                         )
                     } else {
                         AppIcon(
                             glyph = AppIconGlyph.MIC,
                             packType = iconPackType,
-                            tint = if (theme.isDark && theme != KeyboardThemeType.CYBERPUNK_MECH) Color.Black else Color.White,
+                            tint = Color.White,
                             size = 20.dp
                         )
                     }

@@ -59,7 +59,7 @@ fun KeyboardSettingsDialog(
     soundEngine: MechanicalAudioEngine,
     isSoundOn: Boolean,
     isHapticOn: Boolean,
-    isAutocorrectOn: Boolean = true,
+    isAutocorrectOn: Boolean = false,
     isImeEnabled: Boolean = false,
     isImeSelected: Boolean = false,
     onUpdateKeyHeight: (Dp) -> Unit,

@@ -66,7 +66,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _isHapticOn = MutableStateFlow(true)
     val isHapticOn: StateFlow<Boolean> = _isHapticOn.asStateFlow()
 
-    private val _isAutocorrectOn = MutableStateFlow(true)
+    private val _isAutocorrectOn = MutableStateFlow(false)
     val isAutocorrectOn: StateFlow<Boolean> = _isAutocorrectOn.asStateFlow()
 
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())

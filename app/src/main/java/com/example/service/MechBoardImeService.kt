@@ -147,7 +147,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                     var iconPackType by remember { mutableStateOf(IconPackType.WHATSAPP_EXPRESSIVE) }
                     var isSoundOn by remember { mutableStateOf(true) }
                     var isHapticOn by remember { mutableStateOf(true) }
-                    var isAutocorrectOn by remember { mutableStateOf(true) }
+                    var isAutocorrectOn by remember { mutableStateOf(false) }
                     var keyHeight by remember { mutableStateOf(50.dp) }
                     var showSettingsDialog by remember { mutableStateOf(false) }
                     var activeWord by remember { mutableStateOf("") }
