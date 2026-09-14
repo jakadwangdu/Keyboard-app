@@ -2,8 +2,7 @@ package com.example.audio
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioTrack
+import android.media.SoundPool
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -12,6 +11,10 @@ import com.example.model.SwitchType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.PI
 import kotlin.math.exp
@@ -31,8 +34,19 @@ class MechanicalAudioEngine(private val context: Context) {
     private val sampleRate = 44100
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    // Pre-generated sound buffers for instant zero-latency playback
-    private val pcmCache = ConcurrentHashMap<SwitchType, ShortArray>()
+    // Ultra-low latency Android SoundPool for rapid concurrent key clicks
+    private val soundPool: SoundPool = SoundPool.Builder()
+        .setMaxStreams(12)
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+        )
+        .build()
+
+    // Map of SwitchType to SoundPool sound ID
+    private val soundIdMap = ConcurrentHashMap<SwitchType, Int>()
 
     var isSoundEnabled: Boolean = true
     var isHapticEnabled: Boolean = true
@@ -41,20 +55,30 @@ class MechanicalAudioEngine(private val context: Context) {
     var currentSwitch: SwitchType = SwitchType.CREAM_THOCK
 
     init {
-        // Pre-compute sound waveforms for all switch types
-        for (switch in SwitchType.values()) {
-            pcmCache[switch] = generateSwitchPcm(switch)
+        // Pre-generate and cache sound files in background thread for instant hardware-accelerated playback
+        scope.launch {
+            try {
+                for (switch in SwitchType.values()) {
+                    val pcm = generateSwitchPcm(switch)
+                    val soundFile = File(context.cacheDir, "mech_snd_${switch.name.lowercase()}.wav")
+                    writeWavFile(soundFile, pcm, sampleRate)
+                    val soundId = soundPool.load(soundFile.absolutePath, 1)
+                    soundIdMap[switch] = soundId
+                }
+            } catch (_: Exception) {
+                // Ignore initialization issues
+            }
         }
     }
 
     private fun generateSwitchPcm(switch: SwitchType): ShortArray {
-        // Duration: between 45ms and 80ms
+        // Duration: between 40ms and 70ms
         val durationMs = when (switch) {
-            SwitchType.MODEL_M_SPRING -> 75
-            SwitchType.CREAM_THOCK -> 55
-            SwitchType.BLUE_CLICKY -> 50
-            SwitchType.BROWN_TACTILE -> 45
-            SwitchType.RED_LINEAR -> 40
+            SwitchType.MODEL_M_SPRING -> 70
+            SwitchType.CREAM_THOCK -> 50
+            SwitchType.BLUE_CLICKY -> 45
+            SwitchType.BROWN_TACTILE -> 40
+            SwitchType.RED_LINEAR -> 35
         }
         val totalSamples = (sampleRate * durationMs / 1000)
         val pcm = ShortArray(totalSamples)
@@ -67,83 +91,82 @@ class MechanicalAudioEngine(private val context: Context) {
             val t = i.toDouble() / sampleRate
             val progress = i.toDouble() / totalSamples
 
-            // 1. Initial click / transient impulse (first 4-8 ms)
-            val clickEnvelope = exp(-progress * 28.0)
+            // 1. Initial crisp mechanical switch transient
+            val clickEnvelope = exp(-progress * 30.0)
             val clickSine = sin(2 * PI * clickFreq * t)
-            val clickNoise = (Random.nextFloat() * 2f - 1f) * 0.35f
-            val clickComponent = (clickSine * 0.65f + clickNoise) * clickEnvelope
+            val clickNoise = (Random.nextFloat() * 2f - 1f) * 0.3f
+            val clickComponent = (clickSine * 0.7f + clickNoise) * clickEnvelope
 
-            // 2. Bottom-out thock body / cavity resonance (starts slightly after click)
-            val thockDelaySamples = (sampleRate * 0.003).toInt()
+            // 2. Bottom-out thock body / plate resonance
+            val thockDelaySamples = (sampleRate * 0.0025).toInt()
             val thockT = if (i >= thockDelaySamples) (i - thockDelaySamples).toDouble() / sampleRate else 0.0
             val thockEnvelope = if (i >= thockDelaySamples) {
-                exp(-((i - thockDelaySamples).toDouble() / totalSamples) * (14.0 * damp))
+                exp(-((i - thockDelaySamples).toDouble() / totalSamples) * (15.0 * damp))
             } else 0.0
             val thockSine = sin(2 * PI * thockFreq * thockT + sin(2 * PI * (thockFreq * 0.5) * thockT) * 0.5)
-            val thockComponent = thockSine * thockEnvelope * 0.9f
+            val thockComponent = thockSine * thockEnvelope * 0.95f
 
-            // 3. Spring ping for Model M or subtle metal leaf for Blue switch
+            // 3. Spring ping or leaf resonance
             val springComponent = when (switch) {
                 SwitchType.MODEL_M_SPRING -> {
                     val springEnv = exp(-progress * 9.0)
-                    sin(2 * PI * 4400 * t) * 0.25f * springEnv + sin(2 * PI * 2800 * t) * 0.15f * springEnv
+                    sin(2 * PI * 4200 * t) * 0.22f * springEnv + sin(2 * PI * 2600 * t) * 0.15f * springEnv
                 }
                 SwitchType.BLUE_CLICKY -> {
                     val crispEnv = exp(-progress * 35.0)
-                    sin(2 * PI * 6000 * t) * 0.2f * crispEnv
+                    sin(2 * PI * 5800 * t) * 0.2f * crispEnv
                 }
                 SwitchType.CREAM_THOCK -> {
-                    // Deep sub-bass resonance
                     val subEnv = exp(-progress * 12.0)
                     sin(2 * PI * 130 * t) * 0.3f * subEnv
                 }
                 else -> 0.0
             }
 
-            val mixed = (clickComponent * 0.45 + thockComponent * 0.5 + springComponent * 0.3)
+            val mixed = (clickComponent * 0.45 + thockComponent * 0.5 + springComponent * 0.25)
             val clamped = mixed.coerceIn(-1.0, 1.0)
             pcm[i] = (clamped * 32767.0 * 0.95).toInt().toShort()
         }
         return pcm
     }
 
+    private fun writeWavFile(file: File, pcmData: ShortArray, sampleRate: Int) {
+        val totalAudioLen = (pcmData.size * 2).toLong()
+        val totalDataLen = totalAudioLen + 36
+        val channels = 1
+        val byteRate = (sampleRate * 2 * channels).toLong()
+
+        FileOutputStream(file).use { fos ->
+            val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
+            header.put("RIFF".toByteArray())
+            header.putInt(totalDataLen.toInt())
+            header.put("WAVE".toByteArray())
+            header.put("fmt ".toByteArray())
+            header.putInt(16) // Subchunk1Size
+            header.putShort(1.toShort()) // AudioFormat (PCM = 1)
+            header.putShort(channels.toShort()) // NumChannels
+            header.putInt(sampleRate)
+            header.putInt(byteRate.toInt())
+            header.putShort((channels * 2).toShort()) // BlockAlign
+            header.putShort(16.toShort()) // BitsPerSample
+            header.put("data".toByteArray())
+            header.putInt(totalAudioLen.toInt())
+            fos.write(header.array())
+
+            val buffer = ByteBuffer.allocate(pcmData.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+            for (sample in pcmData) {
+                buffer.putShort(sample)
+            }
+            fos.write(buffer.array())
+        }
+    }
+
     fun playKeyPressSound(switch: SwitchType = currentSwitch, pitchShift: Float = 1.0f) {
         if (isSoundEnabled && volumeLevel > 0.01f) {
-            scope.launch {
-                try {
-                    val pcm = pcmCache[switch] ?: generateSwitchPcm(switch)
-                    val effectiveSampleRate = (sampleRate * (pitchShift * (0.97f + Random.nextFloat() * 0.06f))).toInt()
-                    
-                    val audioTrack = AudioTrack.Builder()
-                        .setAudioAttributes(
-                            AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                .build()
-                        )
-                        .setAudioFormat(
-                            AudioFormat.Builder()
-                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                .setSampleRate(effectiveSampleRate)
-                                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                                .build()
-                        )
-                        .setBufferSizeInBytes(pcm.size * 2)
-                        .setTransferMode(AudioTrack.MODE_STATIC)
-                        .build()
-
-                    audioTrack.setVolume(volumeLevel)
-                    audioTrack.write(pcm, 0, pcm.size)
-                    audioTrack.play()
-
-                    // Release track after playback completes
-                    val playDurationMs = (pcm.size * 1000L) / effectiveSampleRate + 20
-                    Thread.sleep(playDurationMs)
-                    audioTrack.stop()
-                    audioTrack.release()
-                } catch (_: Exception) {
-                    // Fail gracefully
-                }
+            val soundId = soundIdMap[switch]
+            if (soundId != null && soundId > 0) {
+                val effectivePitch = (pitchShift * (0.98f + Random.nextFloat() * 0.04f)).coerceIn(0.5f, 2.0f)
+                soundPool.play(soundId, volumeLevel, volumeLevel, 1, 0, effectivePitch)
             }
         }
 

@@ -47,7 +47,8 @@ fun ConversationChatView(
     onClearChat: () -> Unit,
     onReactionClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
-    onUpdateActiveText: ((String) -> Unit)? = null
+    onUpdateActiveText: ((String) -> Unit)? = null,
+    onCopyMessage: ((String) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -239,7 +240,8 @@ fun ConversationChatView(
                         contactBubbleColor = contactBubbleColor,
                         textColor = textColor,
                         accentColor = accentColor,
-                        onReactionClick = { reaction -> onReactionClick(message.id, reaction) }
+                        onReactionClick = { reaction -> onReactionClick(message.id, reaction) },
+                        onCopyMessage = { if (message.text.isNotEmpty()) onCopyMessage?.invoke(message.text) }
                     )
                 }
             }
@@ -406,7 +408,8 @@ private fun ChatMessageBubble(
     contactBubbleColor: Color,
     textColor: Color,
     accentColor: Color,
-    onReactionClick: (String) -> Unit
+    onReactionClick: (String) -> Unit,
+    onCopyMessage: () -> Unit
 ) {
     val bubbleColor = if (message.isMe) userBubbleColor else contactBubbleColor
     val bubbleShape = if (message.isMe) {
@@ -555,16 +558,18 @@ private fun ChatMessageBubble(
                 }
             }
 
-            // Quick Reaction Floating Picker (on click)
+            // Quick Reaction & Action Floating Picker (on click)
             if (showReactionMenu) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = Color(theme.surfaceHex),
                     shadowElevation = 6.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, textColor.copy(alpha = 0.1f)),
                     modifier = Modifier.padding(top = 4.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         listOf("🫠", "😶‍🌫️", "❤️", "😂", "👍", "🔥", "🥹", "🫡").forEach { emoji ->
@@ -579,6 +584,27 @@ private fun ChatMessageBubble(
                                     }
                                     .padding(4.dp)
                             )
+                        }
+
+                        if (message.text.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(theme.keyCapHex))
+                                    .clickable {
+                                        onCopyMessage()
+                                        showReactionMenu = false
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "Copy Message",
+                                    tint = accentColor,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
                         }
                     }
                 }

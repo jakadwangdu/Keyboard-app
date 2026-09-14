@@ -76,6 +76,7 @@ fun MainKeyboardScreen(
                 onClearChat = { viewModel.clearChat() },
                 onReactionClick = { msgId, reaction -> viewModel.addReaction(msgId, reaction) },
                 onUpdateActiveText = { viewModel.updateActiveText(it) },
+                onCopyMessage = { viewModel.copyToSystemClipboard(it) },
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -247,9 +248,13 @@ fun MainKeyboardScreen(
             ClipboardSheet(
                 clipboardList = clipboardHistory,
                 theme = theme,
-                onPasteItem = { text -> viewModel.typeKey(text) },
+                activeText = activeText,
+                onPasteItem = { text -> viewModel.pasteClipboardText(text) },
+                onCopyActiveText = { text -> viewModel.copyToSystemClipboard(text) },
                 onTogglePin = { id -> viewModel.togglePinClipboard(id) },
-                onClearClipboard = { /* clear */ },
+                onDeleteItem = { id -> viewModel.deleteClipboardItem(id) },
+                onClearClipboard = { viewModel.clearUnpinnedClipboard() },
+                onSyncSystemClipboard = { viewModel.syncSystemClipboard() },
                 onDismiss = { showClipboardSheet = false }
             )
         }

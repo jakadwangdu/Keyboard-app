@@ -97,6 +97,12 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         "typing", "awesome", "meeting", "thanks", "hello", "perfect", "great", "ready"
     )
 
+    private val clipboardManager: android.content.ClipboardManager? = try {
+        application.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+    } catch (_: Exception) {
+        null
+    }
+
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
 
     init {
@@ -129,12 +135,21 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
             )
         )
 
-        // Preload sample clipboard
+        // Preload sample clipboard and sync with system clipboard
         _clipboardHistory.value = listOf(
             ClipboardItem(1L, "MechBoard typing test in progress ✨", isPinned = true),
             ClipboardItem(2L, "Let's meet at 3:00 PM for the mech keyboard meetup! ☕", isPinned = false),
             ClipboardItem(3L, "https://github.com/aistudio/mechboard", isPinned = false)
         )
+
+        syncSystemClipboard()
+
+        try {
+            clipboardManager?.addPrimaryClipChangedListener {
+                syncSystemClipboard()
+            }
+        } catch (_: Exception) {
+        }
     }
 
     fun typeKey(key: String) {
@@ -444,18 +459,64 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         audioEngine.playKeyPressSound(_currentSwitch.value)
     }
 
-    fun addClipboardItem(text: String) {
+    fun syncSystemClipboard() {
+        try {
+            val clip = clipboardManager?.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                val clipText = clip.getItemAt(0)?.text?.toString()
+                if (!clipText.isNullOrBlank()) {
+                    val current = _clipboardHistory.value.toMutableList()
+                    current.removeAll { it.text == clipText }
+                    current.add(0, ClipboardItem(text = clipText))
+                    _clipboardHistory.value = current.take(20)
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    fun copyToSystemClipboard(text: String) {
+        if (text.isBlank()) return
+        try {
+            val clip = android.content.ClipData.newPlainText("Clacksy Copy", text)
+            clipboardManager?.setPrimaryClip(clip)
+        } catch (_: Exception) {
+        }
+        addClipboardItem(text)
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
+    }
+
+    fun addClipboardItem(text: String, isPinned: Boolean = false) {
         if (text.isBlank()) return
         val current = _clipboardHistory.value.toMutableList()
         current.removeAll { it.text == text }
-        current.add(0, ClipboardItem(text = text))
-        _clipboardHistory.value = current.take(15)
+        current.add(0, ClipboardItem(text = text, isPinned = isPinned))
+        _clipboardHistory.value = current.take(20)
     }
 
     fun togglePinClipboard(id: Long) {
         _clipboardHistory.value = _clipboardHistory.value.map {
             if (it.id == id) it.copy(isPinned = !it.isPinned) else it
         }
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.1f)
+    }
+
+    fun deleteClipboardItem(id: Long) {
+        _clipboardHistory.value = _clipboardHistory.value.filter { it.id != id }
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.88f)
+    }
+
+    fun clearUnpinnedClipboard() {
+        _clipboardHistory.value = _clipboardHistory.value.filter { it.isPinned }
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.88f)
+    }
+
+    fun pasteClipboardText(text: String) {
+        val current = _activeText.value
+        val updated = if (current.isEmpty()) text else "$current $text"
+        _activeText.value = updated
+        updateSuggestions(updated)
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.2f)
     }
 
     fun setShowImeSetupDialog(show: Boolean) {

@@ -54,10 +54,10 @@ fun RowScope.MechanicalKey(
     val currentOnLongPress by rememberUpdatedState(onLongPress)
     val coroutineScope = rememberCoroutineScope()
 
-    // 3D Physical key travel physics animation
+    // Fast, crisp key travel physics animation
     val travelOffset by animateFloatAsState(
-        targetValue = if (isPressed) 3.5f else 0f,
-        animationSpec = spring(dampingRatio = 0.45f, stiffness = 1100f),
+        targetValue = if (isPressed) 2.5f else 0f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 3200f),
         label = "mech_3d_key_travel"
     )
 
