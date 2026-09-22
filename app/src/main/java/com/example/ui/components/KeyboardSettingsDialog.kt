@@ -74,6 +74,7 @@ fun KeyboardSettingsDialog(
     onUpdateVolume: (Float) -> Unit,
     onUpdateHapticStrength: (Float) -> Unit,
     onOpenDefaultKeyboardSetup: () -> Unit,
+    onSaveAsDefaultPreset: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var selectedHeight by remember { mutableStateOf(currentKeyHeight.value) }
@@ -788,6 +789,35 @@ fun KeyboardSettingsDialog(
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // SECTION 5.5: SAVE CURRENT PRESET AS DEFAULT
+                    var isSaved by remember { mutableStateOf(false) }
+                    Button(
+                        onClick = {
+                            onSaveAsDefaultPreset()
+                            isSaved = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSaved) Color(0xFF00E676) else accentColor
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("save_default_preset_button")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = if (isSaved) "✓ Default Preset Saved!" else "💾 Save as Default Preset",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSaved) Color.Black else Color.White
+                            )
                         }
                     }
 

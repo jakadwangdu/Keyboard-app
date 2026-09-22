@@ -248,129 +248,142 @@ fun GboardTopBar(
             val isRetro95 = theme == KeyboardThemeType.RETRO_95_PIXEL || iconPackType == IconPackType.RETRO_PIXEL_95
             
             if (isRetro95) {
-                // 1995 Pixel Desktop Classic Utility Bar (matching user's reference UI)
+                // 1995 Pixel Desktop Classic Utility Bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp)
+                        .height(42.dp)
                         .background(Color(0xFF000080))
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // 8-bit Yellow Robot Mascot Head (Switch Studio)
+                        // Collapse back to typing bar
+                        IconButton(
+                            onClick = { isToolbarExpanded = false },
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            AppIcon(
+                                glyph = AppIconGlyph.CHEVRON_DOWN,
+                                packType = iconPackType,
+                                tint = Color.White,
+                                size = 18.dp
+                            )
+                        }
+
+                        // Switch Studio
                         IconButton(
                             onClick = onOpenSwitchStudio,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(30.dp)
                         ) {
                             AppIcon(
                                 glyph = AppIconGlyph.MASCOT_ROBOT,
                                 packType = iconPackType,
                                 tint = Color(0xFFFFD700),
-                                size = 22.dp
+                                size = 20.dp
                             )
                         }
 
-                        // 8-bit Floppy Disk (Clipboard / Saved texts)
+                        // Clipboard
                         IconButton(
                             onClick = onOpenClipboard,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(30.dp)
                         ) {
                             AppIcon(
                                 glyph = AppIconGlyph.FLOPPY_DISK,
                                 packType = iconPackType,
                                 tint = Color.White,
-                                size = 20.dp
+                                size = 18.dp
                             )
                         }
 
-                        // 8-bit Jigsaw Puzzle (Icon Packs)
-                        IconButton(
-                            onClick = onToggleIconPack,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            AppIcon(
-                                glyph = AppIconGlyph.PUZZLE,
-                                packType = iconPackType,
-                                tint = Color(0xFFFFD700),
-                                size = 20.dp
-                            )
-                        }
-
-                        // 8-bit Hex Bolt / Nut (Settings & Themes)
+                        // Themes & Settings
                         IconButton(
                             onClick = onOpenThemePicker,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(30.dp)
                         ) {
                             AppIcon(
-                                glyph = AppIconGlyph.HEX_NUT,
+                                glyph = AppIconGlyph.THEME,
                                 packType = iconPackType,
-                                tint = Color(0xFFC0C0C0),
-                                size = 20.dp
+                                tint = Color(0xFF00FFFF),
+                                size = 18.dp
                             )
                         }
 
-                        // 8-bit Microphone (Voice dictation)
+                        // Text Edit
                         IconButton(
-                            onClick = onToggleVoiceTyping,
-                            modifier = Modifier.size(32.dp)
+                            onClick = onOpenTextEditing,
+                            modifier = Modifier.size(30.dp)
                         ) {
                             AppIcon(
-                                glyph = AppIconGlyph.MIC,
+                                glyph = AppIconGlyph.TEXT_EDIT,
                                 packType = iconPackType,
-                                tint = Color.White,
-                                size = 20.dp
+                                tint = Color(0xFFC0C0C0),
+                                size = 18.dp
+                            )
+                        }
+
+                        // Translate
+                        IconButton(
+                            onClick = onOpenTranslate,
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            AppIcon(
+                                glyph = AppIconGlyph.TRANSLATE,
+                                packType = iconPackType,
+                                tint = Color(0xFFFFD700),
+                                size = 18.dp
                             )
                         }
                     }
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // 8-bit Search Magnifier (Emoji & Search)
+                        // Sound toggle
                         IconButton(
-                            onClick = onOpenEmoji,
-                            modifier = Modifier.size(32.dp)
+                            onClick = onToggleSound,
+                            modifier = Modifier.size(30.dp)
                         ) {
                             AppIcon(
-                                glyph = AppIconGlyph.SEARCH,
+                                glyph = if (isSoundOn) AppIconGlyph.SOUND_ON else AppIconGlyph.SOUND_OFF,
                                 packType = iconPackType,
-                                tint = Color.White,
-                                size = 20.dp
+                                tint = if (isSoundOn) Color(0xFF00FF00) else Color(0xFF808080),
+                                size = 18.dp
                             )
                         }
 
-                        // 8-bit Chevron Down (Quick Settings)
+                        // Settings
                         IconButton(
-                            onClick = onToggleIconPack,
-                            modifier = Modifier.size(32.dp)
+                            onClick = onOpenSettings,
+                            modifier = Modifier.size(30.dp)
                         ) {
                             AppIcon(
-                                glyph = AppIconGlyph.CHEVRON_DOWN,
+                                glyph = AppIconGlyph.SETTINGS,
                                 packType = iconPackType,
                                 tint = Color.White,
-                                size = 20.dp
+                                size = 18.dp
                             )
                         }
                     }
                 }
             } else {
-                // 3. Main Gboard Minimal Toolbar Ribbon
+                // 3. Clean Gboard Quick Access Toolbar Ribbon
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(40.dp)
+                        .height(42.dp)
                         .horizontalScroll(rememberScrollState())
                         .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    // Close / Collapse Toolbar button
+                    // Close / Return to Suggestion Bar
                     IconButton(
                         onClick = { isToolbarExpanded = false },
                         modifier = Modifier.size(32.dp)
@@ -378,125 +391,107 @@ fun GboardTopBar(
                         AppIcon(
                             glyph = AppIconGlyph.CLEAR,
                             packType = iconPackType,
-                            tint = textColor.copy(alpha = 0.6f),
-                            size = 16.dp
+                            tint = textColor.copy(alpha = 0.65f),
+                            size = 18.dp
                         )
                     }
 
-                    // Real-Time Inline Translation
+                    // 1. Translate
                     ToolbarIconItem(
                         glyph = AppIconGlyph.TRANSLATE,
                         packType = iconPackType,
                         tint = if (keyboardMode == KeyboardMode.TRANSLATE) accentColor else textColor,
-                        badgeText = "Translate",
-                        tooltip = "Inline Translation",
+                        label = "Translate",
+                        isActive = keyboardMode == KeyboardMode.TRANSLATE,
+                        accentColor = accentColor,
                         onClick = onOpenTranslate
                     )
 
-                    // Precision Text Editing Mode
+                    // 2. Text Editing Pad
                     ToolbarIconItem(
                         glyph = AppIconGlyph.TEXT_EDIT,
                         packType = iconPackType,
                         tint = if (keyboardMode == KeyboardMode.TEXT_EDITING) accentColor else textColor,
-                        badgeText = "Edit",
-                        tooltip = "Cursor & Selection Pad",
+                        label = "Edit",
+                        isActive = keyboardMode == KeyboardMode.TEXT_EDITING,
+                        accentColor = accentColor,
                         onClick = onOpenTextEditing
                     )
 
-                    // One-Handed & Floating Mode Toggle
-                    ToolbarIconItem(
-                        glyph = AppIconGlyph.ONE_HANDED,
-                        packType = iconPackType,
-                        tint = textColor,
-                        badgeText = "Floating",
-                        tooltip = "Cycle Floating / One-Handed Layout",
-                        onClick = onCycleLayoutMode
-                    )
-
-                    // Quick Settings & Resizing
-                    ToolbarIconItem(
-                        glyph = AppIconGlyph.SETTINGS,
-                        packType = iconPackType,
-                        tint = accentColor,
-                        badgeText = null,
-                        tooltip = "Keyboard Settings & Resizing",
-                        onClick = onOpenSettings
-                    )
-
-                    // Conversation Emoji & Sticker Drawer
-                    ToolbarIconItem(
-                        glyph = AppIconGlyph.EMOJI,
-                        packType = iconPackType,
-                        tint = if (keyboardMode == KeyboardMode.EMOJI_DRAWER || keyboardMode == KeyboardMode.STICKERS_DRAWER) accentColor else textColor.copy(alpha = 0.8f),
-                        badgeText = null,
-                        tooltip = "Emojis & Stickers",
-                        onClick = onOpenEmoji
-                    )
-
-                    // Mechanical Switch Sound Studio
-                    ToolbarIconItem(
-                        glyph = AppIconGlyph.SWITCH_STUDIO,
-                        packType = iconPackType,
-                        tint = textColor,
-                        badgeText = null,
-                        tooltip = "Switch Acoustics (${currentSwitch.title})",
-                        onClick = onOpenSwitchStudio
-                    )
-
-                    // Themes
-                    ToolbarIconItem(
-                        glyph = AppIconGlyph.THEME,
-                        packType = iconPackType,
-                        tint = textColor,
-                        badgeText = null,
-                        tooltip = "Themes",
-                        onClick = onOpenThemePicker
-                    )
-
-                    // Clipboard Manager
+                    // 3. Clipboard History
                     ToolbarIconItem(
                         glyph = AppIconGlyph.CLIPBOARD,
                         packType = iconPackType,
                         tint = if (keyboardMode == KeyboardMode.CLIPBOARD_DRAWER) accentColor else textColor,
-                        badgeText = null,
-                        tooltip = "Clipboard",
+                        label = "Clipboard",
+                        isActive = keyboardMode == KeyboardMode.CLIPBOARD_DRAWER,
+                        accentColor = accentColor,
                         onClick = onOpenClipboard
                     )
 
-                    // WhatsApp-Style Attachments button
+                    // 4. Themes
                     ToolbarIconItem(
-                        glyph = AppIconGlyph.ATTACHMENT,
+                        glyph = AppIconGlyph.THEME,
                         packType = iconPackType,
-                        tint = if (keyboardMode == KeyboardMode.ATTACHMENTS_SHEET) accentColor else textColor,
-                        badgeText = null,
-                        tooltip = "Attachments",
-                        onClick = onOpenAttachments
+                        tint = textColor,
+                        label = "Themes",
+                        isActive = false,
+                        accentColor = accentColor,
+                        onClick = onOpenThemePicker
                     )
 
-                    // Text Formatting Shortcuts (Bold, Italic, Code, Quote)
-                    ToolbarTextFormatGroup(
-                        textColor = textColor,
-                        theme = theme,
-                        onFormat = onFormatText
+                    // 5. Mechanical Switch Studio
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.SWITCH_STUDIO,
+                        packType = iconPackType,
+                        tint = accentColor,
+                        label = currentSwitch.title.split(" ").firstOrNull() ?: "Switch",
+                        isActive = false,
+                        accentColor = accentColor,
+                        onClick = onOpenSwitchStudio
                     )
 
-                    // Sound On/Off Toggle
+                    // 6. One-Handed / Floating Layout
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.ONE_HANDED,
+                        packType = iconPackType,
+                        tint = textColor,
+                        label = "Layout",
+                        isActive = false,
+                        accentColor = accentColor,
+                        onClick = onCycleLayoutMode
+                    )
+
+                    // 7. Settings
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.SETTINGS,
+                        packType = iconPackType,
+                        tint = textColor,
+                        label = "Settings",
+                        isActive = false,
+                        accentColor = accentColor,
+                        onClick = onOpenSettings
+                    )
+
+                    // 8. Sound Toggle
                     ToolbarIconItem(
                         glyph = if (isSoundOn) AppIconGlyph.SOUND_ON else AppIconGlyph.SOUND_OFF,
                         packType = iconPackType,
-                        tint = if (isSoundOn) accentColor else textColor.copy(alpha = 0.65f),
-                        badgeText = null,
-                        tooltip = "Sound Toggle",
+                        tint = if (isSoundOn) accentColor else textColor.copy(alpha = 0.5f),
+                        label = if (isSoundOn) "Sound On" else "Muted",
+                        isActive = isSoundOn,
+                        accentColor = accentColor,
                         onClick = onToggleSound
                     )
 
-                    // Voice Dictation
+                    // 9. Voice Dictation
                     ToolbarIconItem(
                         glyph = AppIconGlyph.MIC,
                         packType = iconPackType,
                         tint = textColor,
-                        badgeText = null,
-                        tooltip = "Voice Typing",
+                        label = "Voice",
+                        isActive = isVoiceTyping,
+                        accentColor = accentColor,
                         onClick = onToggleVoiceTyping
                     )
                 }
@@ -510,111 +505,36 @@ private fun ToolbarIconItem(
     glyph: AppIconGlyph,
     packType: IconPackType,
     tint: Color,
-    badgeText: String?,
-    tooltip: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = Color.Transparent,
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .clickable { onClick() }
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            AppIcon(
-                glyph = glyph,
-                packType = packType,
-                tint = tint,
-                size = 19.dp
-            )
-            if (badgeText != null) {
-                Text(
-                    text = badgeText,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = tint
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ToolbarChipItem(
     label: String,
+    isActive: Boolean,
     accentColor: Color,
-    textColor: Color,
     onClick: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = accentColor.copy(alpha = 0.15f),
+        color = if (isActive) accentColor.copy(alpha = 0.18f) else Color.Transparent,
+        border = if (isActive) androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.45f)) else null,
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(accentColor)
+            AppIcon(
+                glyph = glyph,
+                packType = packType,
+                tint = if (isActive) accentColor else tint,
+                size = 18.dp
             )
             Text(
                 text = label,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = textColor
+                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                color = if (isActive) accentColor else tint
             )
-        }
-    }
-}
-
-@Composable
-private fun ToolbarTextFormatGroup(
-    textColor: Color,
-    theme: KeyboardThemeType,
-    onFormat: (String) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color(theme.keyCapAltHex).copy(alpha = 0.5f))
-            .padding(horizontal = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(
-            onClick = { onFormat("*") },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Text(text = "B", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = textColor)
-        }
-        IconButton(
-            onClick = { onFormat("_") },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Text(text = "I", fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 12.sp, color = textColor)
-        }
-        IconButton(
-            onClick = { onFormat("~") },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Text(text = "S", fontSize = 12.sp, color = textColor)
-        }
-        IconButton(
-            onClick = { onFormat("```") },
-            modifier = Modifier.size(30.dp)
-        ) {
-            Text(text = "<>", fontSize = 11.sp, color = textColor)
         }
     }
 }

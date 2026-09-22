@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.model.AttachmentType
 import com.example.model.IconPackType
@@ -50,6 +51,7 @@ fun MainKeyboardScreen(
     val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val clipboardHistory by viewModel.clipboardHistory.collectAsStateWithLifecycle()
+    val saveBannerMessage by viewModel.saveBannerMessage.collectAsStateWithLifecycle()
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSwitchDialog by remember { mutableStateOf(false) }
@@ -299,6 +301,7 @@ fun MainKeyboardScreen(
                 onUpdateVolume = { viewModel.setSoundVolume(it) },
                 onUpdateHapticStrength = { viewModel.setHapticStrength(it) },
                 onOpenDefaultKeyboardSetup = { showDefaultKeyboardDialog = true },
+                onSaveAsDefaultPreset = { viewModel.saveCurrentPresetAsDefault() },
                 onDismiss = { viewModel.setShowSettingsDialog(false) }
             )
         }
@@ -319,6 +322,7 @@ fun MainKeyboardScreen(
                 currentTheme = theme,
                 soundEngine = viewModel.audioEngine,
                 onSelectSwitch = { viewModel.setSwitch(it) },
+                onSaveAsDefaultPreset = { viewModel.saveCurrentPresetAsDefault() },
                 onDismiss = { showSwitchDialog = false }
             )
         }
@@ -358,6 +362,36 @@ fun MainKeyboardScreen(
                     viewModel.setShowImeSetupDialog(false)
                 }
             )
+        }
+
+        // Floating Preset Saved Notification Banner
+        saveBannerMessage?.let { bannerText ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF1E293B),
+                    shadowElevation = 8.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E676).copy(alpha = 0.6f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = bannerText,
+                            fontSize = 13.5.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = Color(0xFF00E676)
+                        )
+                    }
+                }
+            }
         }
     }
 }

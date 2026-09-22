@@ -418,7 +418,7 @@ fun GboardEmojiStickerDrawer(
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 categoriesToShow.forEach { category ->
                     item(key = category.id) {
@@ -430,9 +430,9 @@ fun GboardEmojiStickerDrawer(
                             ) {
                                 Text(
                                     text = category.title,
-                                    fontSize = 11.5.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (category.id == "unicode18") accentColor else textColor.copy(alpha = 0.6f)
+                                    color = if (category.id == "unicode18") accentColor else textColor.copy(alpha = 0.7f)
                                 )
                                 if (category.id == "unicode18") {
                                     Surface(
@@ -440,33 +440,42 @@ fun GboardEmojiStickerDrawer(
                                         color = accentColor.copy(alpha = 0.2f)
                                     ) {
                                         Text(
-                                            text = "NEW (Q4 2026)",
-                                            fontSize = 8.sp,
+                                            text = "Unicode 18.0",
+                                            fontSize = 8.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = accentColor,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                                         )
                                     }
                                 }
                             }
-                            // Flow of emojis
-                            val rows = category.emojis.chunked(8)
+                            // Clean grid flow with 7 items per row
+                            val rows = category.emojis.chunked(7)
                             rows.forEach { rowEmojis ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceAround
                                 ) {
                                     rowEmojis.forEach { emoji ->
                                         Box(
                                             modifier = Modifier
-                                                .size(38.dp)
-                                                .clip(RoundedCornerShape(8.dp))
+                                                .size(44.dp)
+                                                .clip(RoundedCornerShape(10.dp))
                                                 .clickable { onEmojiSelected(emoji) },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(text = emoji, fontSize = 23.sp)
+                                            Text(
+                                                text = emoji,
+                                                fontSize = 24.sp
+                                            )
+                                        }
+                                    }
+                                    // Fill empty slots so items don't stretch
+                                    if (rowEmojis.size < 7) {
+                                        repeat(7 - rowEmojis.size) {
+                                            Spacer(modifier = Modifier.size(44.dp))
                                         }
                                     }
                                 }
@@ -480,23 +489,26 @@ fun GboardEmojiStickerDrawer(
             val currentCategory = EmojiDatabase.allCategories.find { it.id == selectedCategoryId }
             val emojis = currentCategory?.emojis ?: emptyList()
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 38.dp),
+                columns = GridCells.Fixed(7),
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 6.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 items(emojis) { emoji ->
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .clickable { onEmojiSelected(emoji) },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = emoji, fontSize = 24.sp)
+                        Text(
+                            text = emoji,
+                            fontSize = 24.sp
+                        )
                     }
                 }
             }

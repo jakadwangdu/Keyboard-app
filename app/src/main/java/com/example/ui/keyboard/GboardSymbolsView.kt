@@ -24,7 +24,8 @@ fun GboardSymbolsView(
     onBackspace: () -> Unit,
     onSendOrEnter: () -> Unit,
     onToggleAltSymbols: () -> Unit,
-    onSwitchMode: (KeyboardMode) -> Unit
+    onSwitchMode: (KeyboardMode) -> Unit,
+    onScrubCursor: (Int) -> Unit = {}
 ) {
     val row1 = if (!isAltSymbols) {
         listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
@@ -165,7 +166,11 @@ fun GboardSymbolsView(
                 theme = theme,
                 weight = 3.6f,
                 height = keyHeight,
-                onKeyTriggered = { onKeyPressed(" ") }
+                testTagId = "key_symbols_spacebar",
+                onKeyTriggered = { onKeyPressed(" ") },
+                onHorizontalDrag = { dragDelta ->
+                    if (dragDelta > 0) onScrubCursor(1) else onScrubCursor(-1)
+                }
             )
 
             MechanicalKey(

@@ -51,6 +51,7 @@ fun RowScope.MechanicalKey(
     onHorizontalDrag: ((Float) -> Unit)? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    var isScrubbingActive by remember { mutableStateOf(false) }
     val currentOnKeyTriggered by rememberUpdatedState(onKeyTriggered)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
     val currentOnHorizontalDrag by rememberUpdatedState(onHorizontalDrag)
@@ -111,24 +112,45 @@ fun RowScope.MechanicalKey(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     isPressed = true
-                    currentOnKeyTriggered()
 
                     if (onHorizontalDrag != null) {
-                        var totalDrag = 0f
+                        // Spacebar: Track whether it's a tap or a long-press/drag for cursor scrubbing
+                        var isScrubbing = false
+                        var accumulatedDelta = 0f
                         var lastX = down.position.x
+                        val startTime = System.currentTimeMillis()
+
+                        // Wait for drag or hold
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull() ?: break
                             if (!change.pressed) break
+
                             val dx = change.position.x - lastX
                             lastX = change.position.x
-                            totalDrag += dx
-                            if (kotlin.math.abs(totalDrag) > 18f) {
-                                currentOnHorizontalDrag?.invoke(totalDrag)
-                                totalDrag = 0f
+                            accumulatedDelta += dx
+
+                            val elapsed = System.currentTimeMillis() - startTime
+                            if (!isScrubbing && (elapsed > 200L || kotlin.math.abs(accumulatedDelta) > 10f)) {
+                                isScrubbing = true
+                                isScrubbingActive = true
+                            }
+
+                            if (isScrubbing) {
+                                if (kotlin.math.abs(accumulatedDelta) > 16f) {
+                                    currentOnHorizontalDrag?.invoke(accumulatedDelta)
+                                    accumulatedDelta = 0f
+                                }
                             }
                         }
+
+                        if (!isScrubbing) {
+                            // Quick tap without holding/dragging -> insert space
+                            currentOnKeyTriggered()
+                        }
+                        isScrubbingActive = false
                     } else if (isRepeatable) {
+                        currentOnKeyTriggered()
                         val repeatJob = coroutineScope.launch {
                             delay(350L) // Initial hold threshold
                             while (isActive) {
@@ -139,6 +161,7 @@ fun RowScope.MechanicalKey(
                         waitForUpOrCancellation()
                         repeatJob.cancel()
                     } else {
+                        currentOnKeyTriggered()
                         waitForUpOrCancellation()
                     }
                     isPressed = false
@@ -294,11 +317,13 @@ fun RowScope.MechanicalKey(
                             size = if (height >= 52.dp) 20.dp else 18.dp
                         )
                     } else if (primaryText != null) {
+                        val displayText = if (isScrubbingActive) "◄ Slide Cursor ►" else primaryText
+                        val displayColor = if (isScrubbingActive) Color(theme.accentHex) else textColor
                         Text(
-                            text = primaryText,
-                            fontSize = if (primaryText.length > 5) 11.sp else if (primaryText.length > 2) 13.sp else 17.5.sp,
-                            fontWeight = if (isAccent || isRetro95) FontWeight.Bold else FontWeight.SemiBold,
-                            color = textColor,
+                            text = displayText,
+                            fontSize = if (displayText.length > 5) 11.5.sp else if (displayText.length > 2) 13.sp else 17.5.sp,
+                            fontWeight = if (isAccent || isRetro95 || isScrubbingActive) FontWeight.Bold else FontWeight.SemiBold,
+                            color = displayColor,
                             fontFamily = if (isRetro95) FontFamily.Monospace else FontFamily.SansSerif,
                             textAlign = TextAlign.Center
                         )

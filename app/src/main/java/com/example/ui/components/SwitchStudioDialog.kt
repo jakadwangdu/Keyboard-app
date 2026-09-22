@@ -32,6 +32,7 @@ fun SwitchStudioDialog(
     currentTheme: KeyboardThemeType,
     soundEngine: MechanicalAudioEngine,
     onSelectSwitch: (SwitchType) -> Unit,
+    onSaveAsDefaultPreset: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var volume by remember { mutableStateOf(soundEngine.volumeLevel) }
@@ -310,6 +311,29 @@ fun SwitchStudioDialog(
                                 thumbColor = Color(currentSwitch.accentHex),
                                 activeTrackColor = Color(currentSwitch.accentHex)
                             )
+                        )
+                    }
+
+                    var isPresetSaved by remember { mutableStateOf(false) }
+                    Button(
+                        onClick = {
+                            onSaveAsDefaultPreset()
+                            isPresetSaved = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isPresetSaved) Color(0xFF00E676) else Color(currentSwitch.accentHex)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                            .testTag("save_switch_preset_button")
+                    ) {
+                        Text(
+                            text = if (isPresetSaved) "✓ Default Acoustics Saved!" else "💾 Save as Default Preset",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isPresetSaved) Color.Black else Color.White
                         )
                     }
                 }

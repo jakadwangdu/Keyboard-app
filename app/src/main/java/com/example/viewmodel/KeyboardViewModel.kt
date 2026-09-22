@@ -120,7 +120,56 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
 
+    private val prefs = application.getSharedPreferences("clacksy_keyboard_prefs", Context.MODE_PRIVATE)
+
+    private val _saveBannerMessage = MutableStateFlow<String?>(null)
+    val saveBannerMessage: StateFlow<String?> = _saveBannerMessage.asStateFlow()
+
     init {
+        // 1. Load user saved preferences & preset defaults
+        try {
+            val savedSwitchName = prefs.getString("default_switch", SwitchType.CREAM_THOCK.name)
+            val savedSwitch = SwitchType.entries.find { it.name == savedSwitchName } ?: SwitchType.CREAM_THOCK
+            _currentSwitch.value = savedSwitch
+            audioEngine.currentSwitch = savedSwitch
+
+            val savedThemeName = prefs.getString("default_theme", KeyboardThemeType.MINIMAL_DARK.name)
+            val savedTheme = KeyboardThemeType.entries.find { it.name == savedThemeName } ?: KeyboardThemeType.MINIMAL_DARK
+            _keyboardTheme.value = savedTheme
+
+            val savedIconPackName = prefs.getString("default_icon_pack", IconPackType.WHATSAPP_EXPRESSIVE.name)
+            val savedIconPack = IconPackType.entries.find { it.name == savedIconPackName } ?: IconPackType.WHATSAPP_EXPRESSIVE
+            _iconPackType.value = savedIconPack
+
+            val savedKeyHeight = prefs.getFloat("default_key_height", 50f)
+            _keyHeight.value = savedKeyHeight.dp
+
+            val savedSoundOn = prefs.getBoolean("default_sound_enabled", true)
+            _isSoundOn.value = savedSoundOn
+            audioEngine.isSoundEnabled = savedSoundOn
+
+            val savedHapticOn = prefs.getBoolean("default_haptic_enabled", true)
+            _isHapticOn.value = savedHapticOn
+            audioEngine.isHapticEnabled = savedHapticOn
+
+            val savedVolume = prefs.getFloat("default_volume", 0.85f)
+            audioEngine.volumeLevel = savedVolume
+
+            val savedHapticStrength = prefs.getFloat("default_haptic_strength", 0.7f)
+            audioEngine.hapticStrength = savedHapticStrength
+
+            val savedGlideOn = prefs.getBoolean("default_glide_enabled", true)
+            _isGlideTypingOn.value = savedGlideOn
+
+            val savedAutocorrectOn = prefs.getBoolean("default_autocorrect_enabled", false)
+            _isAutocorrectOn.value = savedAutocorrectOn
+
+            val savedLayoutName = prefs.getString("default_layout_mode", KeyboardLayoutMode.FULL_WIDTH.name)
+            val savedLayout = KeyboardLayoutMode.entries.find { it.name == savedLayoutName } ?: KeyboardLayoutMode.FULL_WIDTH
+            _layoutMode.value = savedLayout
+        } catch (_: Exception) {
+        }
+
         // Preload sample conversation with Alex
         _messages.value = listOf(
             ChatMessage(
@@ -164,6 +213,37 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
                 syncSystemClipboard()
             }
         } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * Persists the user's current configuration (Switch acoustics, Theme, Layout, Key height, Haptics) as their Default Preset.
+     */
+    fun saveCurrentPresetAsDefault() {
+        try {
+            prefs.edit()
+                .putString("default_switch", _currentSwitch.value.name)
+                .putString("default_theme", _keyboardTheme.value.name)
+                .putString("default_icon_pack", _iconPackType.value.name)
+                .putFloat("default_key_height", _keyHeight.value.value)
+                .putBoolean("default_sound_enabled", _isSoundOn.value)
+                .putBoolean("default_haptic_enabled", _isHapticOn.value)
+                .putFloat("default_volume", audioEngine.volumeLevel)
+                .putFloat("default_haptic_strength", audioEngine.hapticStrength)
+                .putBoolean("default_glide_enabled", _isGlideTypingOn.value)
+                .putBoolean("default_autocorrect_enabled", _isAutocorrectOn.value)
+                .putString("default_layout_mode", _layoutMode.value.name)
+                .apply()
+
+            audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.35f)
+            _saveBannerMessage.value = "Preset saved as default! ✓"
+
+            viewModelScope.launch {
+                delay(2500)
+                _saveBannerMessage.value = null
+            }
+        } catch (e: Exception) {
+            _saveBannerMessage.value = "Failed to save preset"
         }
     }
 
