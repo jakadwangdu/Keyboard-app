@@ -11,15 +11,27 @@ data class EmojiCategory(
 
 object EmojiDatabase {
 
+    val unicode18NewEmojis: List<String> = listOf(
+        "🫠", "🫨", "🫩", "🥒", "☄️", "🏮", "🧼", "🦋", "🥅", "🫲",
+        "🫱", "🪕", "⛏️", "💥", "🪪", "🫚", "🍋‍🟩", "🍄‍🟫", "🐦‍🔥", "⛓️‍💥",
+        "🪿", "🫎", "🪼", "🫏", "🐦‍⬛", "🪽", "🪻", "🫛", "🩷", "🩵", "🩶", "🫧"
+    )
+
     val allCategories: List<EmojiCategory> by lazy {
         listOf(
+            EmojiCategory(
+                id = "unicode18",
+                title = "✨ Unicode 18.0 (2026)",
+                iconGlyph = AppIconGlyph.REACTION_FIRE,
+                emojis = unicode18NewEmojis
+            ),
             EmojiCategory(
                 id = "recent",
                 title = "Recent & Favorites",
                 iconGlyph = AppIconGlyph.REACTION_HEART,
                 emojis = listOf(
-                    "😀", "😂", "🫠", "🥹", "🫡", "🫶", "🔥", "❤️", "🩷", "✨",
-                    "👍", "🎉", "😍", "💀", "🫨", "🫧", "🪩", "🍋‍🟩", "🍄‍🟫", "⌨️"
+                    "🫠", "🫨", "🫩", "✨", "🔥", "❤️", "🩷", "😂", "🥹", "🫡",
+                    "🫶", "👍", "🎉", "😍", "💀", "🥒", "☄️", "🏮", "🦋", "⌨️"
                 )
             ),
             EmojiCategory(

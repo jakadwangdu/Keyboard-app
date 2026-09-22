@@ -11,8 +11,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -22,10 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.engine.EmojiPredictionEngine
+import com.example.engine.MediaType
 import com.example.icons.AppIcon
 import com.example.icons.AppIconGlyph
 import com.example.model.EmojiDatabase
@@ -42,6 +46,7 @@ fun GboardEmojiStickerDrawer(
 ) {
     var selectedCategoryId by remember { mutableStateOf("all") }
     var searchQuery by remember { mutableStateOf("") }
+    var mediaTypeFilter by remember { mutableStateOf<MediaType?>(null) }
 
     val emojiKitchenStickers = remember {
         listOf(
@@ -60,45 +65,42 @@ fun GboardEmojiStickerDrawer(
 
     val bgColor = Color(theme.surfaceHex)
     val cardBg = Color(theme.keyCapHex)
+    val altCardBg = Color(theme.keyCapAltHex)
     val accentColor = Color(theme.accentHex)
     val textColor = Color(theme.keyTextHex)
 
-    // Filter emojis if search query is active
-    val searchResults = remember(searchQuery) {
+    // Unified media search results across Emojis, GIFs, Stickers
+    val unifiedSearchResults = remember(searchQuery, mediaTypeFilter) {
         if (searchQuery.isBlank()) emptyList()
         else {
-            val q = searchQuery.trim().lowercase()
-            EmojiDatabase.allCategories
-                .filter { it.title.lowercase().contains(q) || it.id.contains(q) }
-                .flatMap { it.emojis }
-                .distinct()
+            val all = EmojiPredictionEngine.searchUnifiedMedia(searchQuery)
+            if (mediaTypeFilter != null) all.filter { it.type == mediaTypeFilter } else all
         }
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(300.dp)
+            .height(310.dp)
             .background(bgColor)
             .testTag("gboard_emoji_drawer")
     ) {
-        // 1. Emoji Kitchen / Mashup Strip
+        // 1. Unified Search Input Bar (Gboard Top Search)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(bgColor.copy(alpha = 0.95f))
-                .padding(horizontal = 8.dp, vertical = 5.dp)
-                .horizontalScroll(rememberScrollState()),
+                .background(cardBg.copy(alpha = 0.5f))
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Close / Return to ABC Button
+            // Return to ABC Button
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 color = cardBg,
                 modifier = Modifier
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .clickable { onCloseDrawer() }
             ) {
                 Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
@@ -106,42 +108,114 @@ fun GboardEmojiStickerDrawer(
                 }
             }
 
-            emojiKitchenStickers.forEach { sticker ->
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = cardBg,
+            // Search Bar Input Field
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = altCardBg,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(34.dp)
+            ) {
+                Row(
                     modifier = Modifier
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onEmojiSelected(sticker) }
+                        .fillMaxSize()
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = sticker, fontSize = 16.sp)
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = textColor.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        textStyle = TextStyle(
+                            color = textColor,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        cursorBrush = SolidColor(accentColor),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        decorationBox = { innerTextField ->
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Search Emojis, GIFs & Stickers (e.g. stress, pickle, fire)...",
+                                    color = textColor.copy(alpha = 0.45f),
+                                    fontSize = 11.sp
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = textColor.copy(alpha = 0.6f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
             }
+
+            // Backspace Key
+            IconButton(
+                onClick = onBackspace,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Backspace,
+                    contentDescription = "Backspace",
+                    tint = textColor.copy(alpha = 0.8f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
 
-        // 2. Category Tabs & Backspace
+        // 2. Category / Media Switcher Tabs
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(cardBg.copy(alpha = 0.5f))
-                .padding(horizontal = 6.dp, vertical = 3.dp),
+                .background(cardBg.copy(alpha = 0.3f))
+                .padding(horizontal = 6.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // "All" tab
+                // Unicode 18.0 Tag
+                val isU18 = selectedCategoryId == "unicode18"
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isU18) accentColor else accentColor.copy(alpha = 0.15f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { selectedCategoryId = "unicode18"; searchQuery = "" }
+                ) {
+                    Text(
+                        text = "✨ Unicode 18.0",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isU18) Color.Black else accentColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                // All Emojis Tab
                 val isAllSelected = selectedCategoryId == "all"
                 Surface(
                     shape = RoundedCornerShape(10.dp),
@@ -159,8 +233,26 @@ fun GboardEmojiStickerDrawer(
                     )
                 }
 
+                // GIFs Reaction Tab
+                val isGifs = selectedCategoryId == "gifs"
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isGifs) accentColor.copy(alpha = 0.2f) else Color.Transparent,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { selectedCategoryId = "gifs"; searchQuery = "" }
+                ) {
+                    Text(
+                        text = "GIFs",
+                        fontSize = 11.5.sp,
+                        fontWeight = if (isGifs) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isGifs) accentColor else textColor.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
                 // Database categories
-                EmojiDatabase.allCategories.forEach { category ->
+                EmojiDatabase.allCategories.filter { it.id != "unicode18" }.forEach { category ->
                     val isSelected = selectedCategoryId == category.id
                     Surface(
                         shape = RoundedCornerShape(10.dp),
@@ -206,44 +298,83 @@ fun GboardEmojiStickerDrawer(
                     )
                 }
             }
-
-            // Quick backspace in emoji drawer
-            IconButton(
-                onClick = onBackspace,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Backspace,
-                    contentDescription = "Backspace",
-                    tint = textColor.copy(alpha = 0.8f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
         }
 
         HorizontalDivider(color = textColor.copy(alpha = 0.08f), thickness = 0.5.dp)
 
-        // 3. Emojis Grid Viewport
+        // 3. Grid / Content Viewport
         if (searchQuery.isNotBlank()) {
-            // Search Results Grid
+            // Unified Search Results (Emojis + GIFs + Stickers)
+            if (unifiedSearchResults.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text("No matching media found for '$searchQuery'", color = textColor.copy(alpha = 0.6f), fontSize = 13.sp)
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 75.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(unifiedSearchResults) { result ->
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = cardBg,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onEmojiSelected(result.content) }
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = if (result.type == MediaType.GIF) "GIF" else result.content,
+                                    fontSize = if (result.type == MediaType.EMOJI) 24.sp else 14.sp
+                                )
+                                Text(
+                                    text = result.title,
+                                    fontSize = 9.sp,
+                                    color = textColor.copy(alpha = 0.6f),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (selectedCategoryId == "gifs") {
+            // GIFs reaction catalog
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 40.dp),
+                columns = GridCells.Fixed(2),
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(searchResults) { emoji ->
-                    Box(
+                items(EmojiPredictionEngine.gifsCatalog) { gif ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = cardBg,
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onEmojiSelected(emoji) },
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .height(65.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onEmojiSelected("[GIF: ${gif.title}]") }
                     ) {
-                        Text(text = emoji, fontSize = 24.sp)
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(text = "🎬 GIF", fontSize = 10.sp, color = accentColor, fontWeight = FontWeight.Bold)
+                            Text(text = gif.title, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor)
+                        }
                     }
                 }
             }
@@ -274,8 +405,14 @@ fun GboardEmojiStickerDrawer(
                     }
                 }
             }
-        } else if (selectedCategoryId == "all") {
-            // All Categories in a Continuous Smooth Scrolling List
+        } else if (selectedCategoryId == "all" || selectedCategoryId == "unicode18") {
+            // All Categories or Unicode 18
+            val categoriesToShow = if (selectedCategoryId == "unicode18") {
+                EmojiDatabase.allCategories.filter { it.id == "unicode18" }
+            } else {
+                EmojiDatabase.allCategories
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -283,16 +420,35 @@ fun GboardEmojiStickerDrawer(
                     .padding(horizontal = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                EmojiDatabase.allCategories.forEach { category ->
+                categoriesToShow.forEach { category ->
                     item(key = category.id) {
                         Column {
-                            Text(
-                                text = category.title,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor.copy(alpha = 0.6f),
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp, start = 4.dp)
-                            )
+                            ) {
+                                Text(
+                                    text = category.title,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (category.id == "unicode18") accentColor else textColor.copy(alpha = 0.6f)
+                                )
+                                if (category.id == "unicode18") {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = accentColor.copy(alpha = 0.2f)
+                                    ) {
+                                        Text(
+                                            text = "NEW (Q4 2026)",
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = accentColor,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
+                            }
                             // Flow of emojis
                             val rows = category.emojis.chunked(8)
                             rows.forEach { rowEmojis ->
@@ -347,3 +503,4 @@ fun GboardEmojiStickerDrawer(
         }
     }
 }
+

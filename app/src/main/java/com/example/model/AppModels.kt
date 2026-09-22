@@ -94,7 +94,8 @@ enum class KeyboardThemeType(
     val chatBackgroundHex: Long,
     val userBubbleHex: Long,
     val contactBubbleHex: Long,
-    val isDark: Boolean
+    val isDark: Boolean,
+    val isBorderless: Boolean = false
 ) {
     MINIMAL_DARK(
         displayName = "Minimal Slate Dark",
@@ -107,7 +108,36 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFF121214,
         userBubbleHex = 0xFF27272A,
         contactBubbleHex = 0xFF18181B,
-        isDark = true
+        isDark = true,
+        isBorderless = false
+    ),
+    MINIMAL_BORDERLESS_DARK(
+        displayName = "Borderless Minimal Dark",
+        backgroundHex = 0xFF101012,
+        surfaceHex = 0xFF16161A,
+        keyCapHex = 0x00000000, // Transparent keycap for true borderless feel
+        keyCapAltHex = 0x22FFFFFF,
+        keyTextHex = 0xFFF4F4F5,
+        accentHex = 0xFF00E676,
+        chatBackgroundHex = 0xFF101012,
+        userBubbleHex = 0xFF27272A,
+        contactBubbleHex = 0xFF18181B,
+        isDark = true,
+        isBorderless = true
+    ),
+    MINIMAL_BORDERLESS_LIGHT(
+        displayName = "Borderless Minimal Light",
+        backgroundHex = 0xFFFDFDFD,
+        surfaceHex = 0xFFF4F5F7,
+        keyCapHex = 0x00000000, // Transparent keycap for true borderless feel
+        keyCapAltHex = 0x1A000000,
+        keyTextHex = 0xFF1A1C1E,
+        accentHex = 0xFF25D366,
+        chatBackgroundHex = 0xFFFDFDFD,
+        userBubbleHex = 0xFFE9ECEF,
+        contactBubbleHex = 0xFFFFFFFF,
+        isDark = false,
+        isBorderless = true
     ),
     MINIMAL_LIGHT(
         displayName = "Minimal Pure Light",
@@ -120,7 +150,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFFF8F9FA,
         userBubbleHex = 0xFFE9ECEF,
         contactBubbleHex = 0xFFFFFFFF,
-        isDark = false
+        isDark = false,
+        isBorderless = false
     ),
     AMOLED_BLACK(
         displayName = "AMOLED Pitch Dark",
@@ -133,7 +164,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFF000000,
         userBubbleHex = 0xFF005C4B,
         contactBubbleHex = 0xFF1A1F26,
-        isDark = true
+        isDark = true,
+        isBorderless = false
     ),
     WHATSAPP_DARK(
         displayName = "WhatsApp Dark Chat",
@@ -146,7 +178,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFF0B141A,
         userBubbleHex = 0xFF005C4B,
         contactBubbleHex = 0xFF1F2C34,
-        isDark = true
+        isDark = true,
+        isBorderless = false
     ),
     WHATSAPP_LIGHT(
         displayName = "WhatsApp Light Chat",
@@ -159,7 +192,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFFEFEAE2,
         userBubbleHex = 0xFFD9FDD3,
         contactBubbleHex = 0xFFFFFFFF,
-        isDark = false
+        isDark = false,
+        isBorderless = false
     ),
     ANDROID_17_PILL(
         displayName = "Android 17 Expressive",
@@ -172,7 +206,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFF141218,
         userBubbleHex = 0xFF4F378B,
         contactBubbleHex = 0xFF2B2930,
-        isDark = true
+        isDark = true,
+        isBorderless = false
     ),
     IOS_FROSTED_DARK(
         displayName = "iOS SF Glass Dark",
@@ -185,7 +220,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFF000000,
         userBubbleHex = 0xFF007AFF,
         contactBubbleHex = 0xFF2C2C2E,
-        isDark = true
+        isDark = true,
+        isBorderless = false
     ),
     CYBERPUNK_MECH(
         displayName = "Cyberpunk Cyberboard",
@@ -198,7 +234,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFF0A0E17,
         userBubbleHex = 0xFF2B1055,
         contactBubbleHex = 0xFF1A263D,
-        isDark = true
+        isDark = true,
+        isBorderless = false
     ),
     RETRO_MODEL_M(
         displayName = "Retro 1984 Beige",
@@ -211,7 +248,8 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFFD6C7A1,
         userBubbleHex = 0xFFC2B28B,
         contactBubbleHex = 0xFFEFE4C8,
-        isDark = false
+        isDark = false,
+        isBorderless = false
     ),
     RETRO_95_PIXEL(
         displayName = "1995 Pixel Desktop",
@@ -224,8 +262,12 @@ enum class KeyboardThemeType(
         chatBackgroundHex = 0xFF008080,
         userBubbleHex = 0xFFFFFFFF,
         contactBubbleHex = 0xFFE0DFDB,
-        isDark = false
-    )
+        isDark = false,
+        isBorderless = false
+    );
+
+    val isBorderlessTheme: Boolean
+        get() = this == MINIMAL_BORDERLESS_DARK || this == MINIMAL_BORDERLESS_LIGHT
 }
 
 enum class KeyboardMode {
@@ -235,7 +277,39 @@ enum class KeyboardMode {
     EMOJI_DRAWER,
     STICKERS_DRAWER,
     ATTACHMENTS_SHEET,
-    CLIPBOARD_DRAWER
+    CLIPBOARD_DRAWER,
+    TEXT_EDITING,
+    TRANSLATE
+}
+
+enum class KeyboardLayoutMode(val displayName: String) {
+    FULL_WIDTH("Standard Full"),
+    ONE_HANDED_LEFT("One-Handed (Left)"),
+    ONE_HANDED_RIGHT("One-Handed (Right)"),
+    FLOATING("Floating Window")
+}
+
+data class TranslationLanguage(
+    val code: String,
+    val name: String,
+    val flag: String
+)
+
+object TranslationLanguages {
+    val supported = listOf(
+        TranslationLanguage("es", "Spanish", "🇪🇸"),
+        TranslationLanguage("fr", "French", "🇫🇷"),
+        TranslationLanguage("de", "German", "🇩🇪"),
+        TranslationLanguage("it", "Italian", "🇮🇹"),
+        TranslationLanguage("pt", "Portuguese", "🇧🇷"),
+        TranslationLanguage("hi", "Hindi", "🇮🇳"),
+        TranslationLanguage("ja", "Japanese", "🇯🇵"),
+        TranslationLanguage("zh", "Chinese", "🇨🇳"),
+        TranslationLanguage("ko", "Korean", "🇰🇷"),
+        TranslationLanguage("ru", "Russian", "🇷🇺"),
+        TranslationLanguage("ar", "Arabic", "🇸🇦"),
+        TranslationLanguage("en", "English", "🇺🇸")
+    )
 }
 
 enum class MessageStatus {

@@ -70,7 +70,9 @@ enum class AppIconGlyph {
     HEX_NUT,
     MASCOT_ROBOT,
     CHEVRON_DOWN,
-    ENTER_ARROW
+    ENTER_ARROW,
+    TEXT_EDIT,
+    ONE_HANDED
 }
 
 @Composable
@@ -346,6 +348,8 @@ private fun WhatsAppIcon(
         AppIconGlyph.MASCOT_ROBOT -> Icons.Default.SmartToy
         AppIconGlyph.CHEVRON_DOWN -> Icons.Default.KeyboardArrowDown
         AppIconGlyph.ENTER_ARROW -> Icons.AutoMirrored.Filled.KeyboardReturn
+        AppIconGlyph.TEXT_EDIT -> Icons.Default.EditNote
+        AppIconGlyph.ONE_HANDED -> Icons.Default.Dock
     }
 
     Icon(
@@ -411,6 +415,8 @@ private fun Android17Icon(
         AppIconGlyph.MASCOT_ROBOT -> Icons.Default.SmartToy
         AppIconGlyph.CHEVRON_DOWN -> Icons.Default.KeyboardArrowDown
         AppIconGlyph.ENTER_ARROW -> Icons.AutoMirrored.Filled.KeyboardReturn
+        AppIconGlyph.TEXT_EDIT -> Icons.Default.EditNote
+        AppIconGlyph.ONE_HANDED -> Icons.Default.Smartphone
     }
 
     Icon(
@@ -476,6 +482,8 @@ private fun IosSfIcon(
         AppIconGlyph.MASCOT_ROBOT -> Icons.Default.SmartToy
         AppIconGlyph.CHEVRON_DOWN -> Icons.Default.KeyboardArrowDown
         AppIconGlyph.ENTER_ARROW -> Icons.AutoMirrored.Filled.KeyboardReturn
+        AppIconGlyph.TEXT_EDIT -> Icons.Default.Edit
+        AppIconGlyph.ONE_HANDED -> Icons.Default.Devices
     }
 
     Icon(

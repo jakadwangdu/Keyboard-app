@@ -60,6 +60,7 @@ fun KeyboardSettingsDialog(
     isSoundOn: Boolean,
     isHapticOn: Boolean,
     isAutocorrectOn: Boolean = false,
+    isGlideTypingOn: Boolean = true,
     isImeEnabled: Boolean = false,
     isImeSelected: Boolean = false,
     onUpdateKeyHeight: (Dp) -> Unit,
@@ -69,6 +70,7 @@ fun KeyboardSettingsDialog(
     onToggleSound: (Boolean) -> Unit,
     onToggleHaptic: (Boolean) -> Unit,
     onToggleAutocorrect: (Boolean) -> Unit = {},
+    onToggleGlideTyping: (Boolean) -> Unit = {},
     onUpdateVolume: (Float) -> Unit,
     onUpdateHapticStrength: (Float) -> Unit,
     onOpenDefaultKeyboardSetup: () -> Unit,
@@ -78,6 +80,7 @@ fun KeyboardSettingsDialog(
     var soundEnabled by remember { mutableStateOf(isSoundOn) }
     var hapticEnabled by remember { mutableStateOf(isHapticOn) }
     var autocorrectEnabled by remember { mutableStateOf(isAutocorrectOn) }
+    var glideEnabled by remember { mutableStateOf(isGlideTypingOn) }
     var volume by remember { mutableStateOf(soundEngine.volumeLevel) }
     var hapticStrength by remember { mutableStateOf(soundEngine.hapticStrength) }
 
@@ -447,6 +450,78 @@ fun KeyboardSettingsDialog(
                                             )
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    // SECTION: GLIDE TYPING (Gesture Typing)
+                    SettingsSection(
+                        title = "Glide Typing (Gesture Input)",
+                        icon = Icons.Default.Keyboard,
+                        accentColor = accentColor,
+                        textColor = textColor
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = cardBg,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Continuous Gesture Input",
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = textColor
+                                            )
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = if (glideEnabled) Color(0xFF00E676).copy(alpha = 0.18f) else textColor.copy(alpha = 0.1f)
+                                            ) {
+                                                Text(
+                                                    text = if (glideEnabled) "ON" else "OFF",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (glideEnabled) Color(0xFF00E676) else textColor.copy(alpha = 0.5f),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = "Glide your finger through letters to type complete words with neon dynamic trail rendering",
+                                            fontSize = 11.5.sp,
+                                            color = textColor.copy(alpha = 0.65f),
+                                            lineHeight = 15.sp,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Switch(
+                                        checked = glideEnabled,
+                                        onCheckedChange = {
+                                            glideEnabled = it
+                                            onToggleGlideTyping(it)
+                                            soundEngine.playKeyPressSound(currentSwitch)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = accentColor,
+                                            checkedTrackColor = accentColor.copy(alpha = 0.4f)
+                                        ),
+                                        modifier = Modifier.testTag("toggle_glide_switch")
+                                    )
                                 }
                             }
                         }

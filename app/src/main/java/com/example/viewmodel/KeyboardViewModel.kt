@@ -69,6 +69,21 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _isAutocorrectOn = MutableStateFlow(false)
     val isAutocorrectOn: StateFlow<Boolean> = _isAutocorrectOn.asStateFlow()
 
+    private val _isGlideTypingOn = MutableStateFlow(true)
+    val isGlideTypingOn: StateFlow<Boolean> = _isGlideTypingOn.asStateFlow()
+
+    private val _layoutMode = MutableStateFlow<KeyboardLayoutMode>(KeyboardLayoutMode.FULL_WIDTH)
+    val layoutMode: StateFlow<KeyboardLayoutMode> = _layoutMode.asStateFlow()
+
+    private val _cursorPosition = MutableStateFlow(0)
+    val cursorPosition: StateFlow<Int> = _cursorPosition.asStateFlow()
+
+    private val _isSelectionActive = MutableStateFlow(false)
+    val isSelectionActive: StateFlow<Boolean> = _isSelectionActive.asStateFlow()
+
+    private val _selectionAnchor = MutableStateFlow(0)
+    val selectionAnchor: StateFlow<Int> = _selectionAnchor.asStateFlow()
+
     private val _suggestions = MutableStateFlow<List<String>>(emptyList())
     val suggestions: StateFlow<List<String>> = _suggestions.asStateFlow()
 
@@ -515,8 +530,201 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         val current = _activeText.value
         val updated = if (current.isEmpty()) text else "$current $text"
         _activeText.value = updated
+        _cursorPosition.value = updated.length
         updateSuggestions(updated)
         audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.2f)
+    }
+
+    // ─── Precision Text Editing Controls ───
+    fun moveCursor(delta: Int) {
+        val text = _activeText.value
+        val newPos = (_cursorPosition.value + delta).coerceIn(0, text.length)
+        _cursorPosition.value = newPos
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.05f)
+    }
+
+    fun moveCursorToStart() {
+        _cursorPosition.value = 0
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.1f)
+    }
+
+    fun moveCursorToEnd() {
+        _cursorPosition.value = _activeText.value.length
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.1f)
+    }
+
+    fun moveCursorWord(delta: Int) {
+        val text = _activeText.value
+        if (text.isEmpty()) return
+        var pos = _cursorPosition.value
+        if (delta < 0) {
+            // Move left to previous word boundary
+            pos = (pos - 1).coerceAtLeast(0)
+            while (pos > 0 && text[pos] == ' ') pos--
+            while (pos > 0 && text[pos - 1] != ' ') pos--
+        } else {
+            // Move right to next word boundary
+            while (pos < text.length && text[pos] != ' ') pos++
+            while (pos < text.length && text[pos] == ' ') pos++
+        }
+        _cursorPosition.value = pos.coerceIn(0, text.length)
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.08f)
+    }
+
+    fun toggleSelection() {
+        val next = !_isSelectionActive.value
+        _isSelectionActive.value = next
+        if (next) {
+            _selectionAnchor.value = _cursorPosition.value
+        }
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
+    }
+
+    fun selectAll() {
+        _isSelectionActive.value = true
+        _selectionAnchor.value = 0
+        _cursorPosition.value = _activeText.value.length
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.2f)
+    }
+
+    fun copySelection() {
+        val text = _activeText.value
+        if (text.isEmpty()) return
+        val selectedText = getSelectedText()
+        if (selectedText.isNotEmpty()) {
+            copyToSystemClipboard(selectedText)
+        } else {
+            copyToSystemClipboard(text)
+        }
+    }
+
+    fun cutSelection() {
+        val text = _activeText.value
+        if (text.isEmpty()) return
+        val (start, end) = getSelectionBounds()
+        if (start < end) {
+            val cut = text.substring(start, end)
+            copyToSystemClipboard(cut)
+            val updated = text.removeRange(start, end)
+            _activeText.value = updated
+            _cursorPosition.value = start
+            _isSelectionActive.value = false
+            updateSuggestions(updated)
+        } else {
+            copyToSystemClipboard(text)
+            _activeText.value = ""
+            _cursorPosition.value = 0
+        }
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.9f)
+    }
+
+    fun pasteToSelection() {
+        try {
+            val clip = clipboardManager?.primaryClip
+            val pasteText = clip?.getItemAt(0)?.text?.toString() ?: ""
+            if (pasteText.isNotEmpty()) {
+                val text = _activeText.value
+                val (start, end) = getSelectionBounds()
+                val updated = if (start < end) {
+                    text.replaceRange(start, end, pasteText)
+                } else {
+                    val pos = _cursorPosition.value.coerceIn(0, text.length)
+                    text.substring(0, pos) + pasteText + text.substring(pos)
+                }
+                _activeText.value = updated
+                _cursorPosition.value = (start + pasteText.length).coerceIn(0, updated.length)
+                _isSelectionActive.value = false
+                updateSuggestions(updated)
+                audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    fun deleteForward() {
+        val text = _activeText.value
+        val (start, end) = getSelectionBounds()
+        if (start < end) {
+            val updated = text.removeRange(start, end)
+            _activeText.value = updated
+            _cursorPosition.value = start
+            _isSelectionActive.value = false
+            updateSuggestions(updated)
+            audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.88f)
+        } else {
+            val pos = _cursorPosition.value
+            if (pos < text.length) {
+                val updated = text.removeRange(pos, pos + 1)
+                _activeText.value = updated
+                updateSuggestions(updated)
+                audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.88f)
+            }
+        }
+    }
+
+    private fun getSelectionBounds(): Pair<Int, Int> {
+        val textLen = _activeText.value.length
+        if (!_isSelectionActive.value) return Pair(_cursorPosition.value.coerceIn(0, textLen), _cursorPosition.value.coerceIn(0, textLen))
+        val p1 = _selectionAnchor.value.coerceIn(0, textLen)
+        val p2 = _cursorPosition.value.coerceIn(0, textLen)
+        return Pair(minOf(p1, p2), maxOf(p1, p2))
+    }
+
+    private fun getSelectedText(): String {
+        val (start, end) = getSelectionBounds()
+        return if (start < end) _activeText.value.substring(start, end) else ""
+    }
+
+    fun clearActiveText() {
+        _activeText.value = ""
+        _cursorPosition.value = 0
+        _isSelectionActive.value = false
+        _suggestions.value = emptyList()
+        _candidates.value = emptyList()
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.85f)
+    }
+
+    // ─── Glide & Layout Modes ───
+    fun toggleGlideTyping() {
+        _isGlideTypingOn.value = !_isGlideTypingOn.value
+    }
+
+    fun setGlideTypingEnabled(enabled: Boolean) {
+        _isGlideTypingOn.value = enabled
+    }
+
+    fun onGlideWordCommitted(word: String) {
+        val current = _activeText.value
+        val updated = if (current.isEmpty() || current.endsWith(" ")) {
+            current + word + " "
+        } else {
+            "$current $word "
+        }
+        _activeText.value = updated
+        _cursorPosition.value = updated.length
+        updateSuggestions(updated)
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
+    }
+
+    fun setLayoutMode(mode: KeyboardLayoutMode) {
+        _layoutMode.value = mode
+    }
+
+    fun cycleLayoutMode() {
+        val modes = KeyboardLayoutMode.entries
+        val nextIndex = (_layoutMode.value.ordinal + 1) % modes.size
+        _layoutMode.value = modes[nextIndex]
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.2f)
+    }
+
+    fun applyTranslation(translated: String) {
+        if (translated.isBlank()) return
+        val current = _activeText.value
+        val updated = if (current.isEmpty()) translated else "$current $translated"
+        _activeText.value = updated
+        _cursorPosition.value = updated.length
+        updateSuggestions(updated)
+        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
     }
 
     fun setShowImeSetupDialog(show: Boolean) {

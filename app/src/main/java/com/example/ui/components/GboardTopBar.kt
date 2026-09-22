@@ -46,12 +46,24 @@ fun GboardTopBar(
     onOpenClipboard: () -> Unit,
     onToggleVoiceTyping: () -> Unit,
     onFormatText: (String) -> Unit,
+    onOpenTranslate: () -> Unit = {},
+    onOpenTextEditing: () -> Unit = {},
+    onCycleLayoutMode: () -> Unit = {},
     onOpenDefaultKeyboardSetup: () -> Unit = {},
     onOpenSettings: () -> Unit = {}
 ) {
+    var isToolbarExpanded by remember { mutableStateOf(false) }
     val barBg = Color(theme.surfaceHex)
     val accentColor = Color(theme.accentHex)
     val textColor = Color(theme.keyTextHex)
+
+    // Contextual predicted emojis based on last typed word
+    val lastWord = remember(activeText) {
+        activeText.trim().split(" ").lastOrNull() ?: ""
+    }
+    val contextualEmojis = remember(lastWord) {
+        com.example.engine.EmojiPredictionEngine.predictEmojis(lastWord)
+    }
 
     Column(
         modifier = Modifier
@@ -59,47 +71,106 @@ fun GboardTopBar(
             .background(barBg)
             .testTag("gboard_top_bar")
     ) {
-        // 1. Gboard Predictive Word Suggestion & Spell Correction Strip (if typing)
-        if (suggestions.isNotEmpty() && !isVoiceTyping) {
-            val lastWord = activeText.split(" ").lastOrNull() ?: ""
+        // 1. Gboard Predictive Word Suggestion & Unicode 18 Strip (when not expanded into tools menu)
+        if (!isToolbarExpanded && !isVoiceTyping) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(38.dp)
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                suggestions.forEachIndexed { index, word ->
-                    val isAutocorrectMatch = index == 0 && lastWord.isNotBlank() && !word.equals(lastWord, ignoreCase = true)
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isAutocorrectMatch) accentColor.copy(alpha = 0.22f) else Color(theme.keyCapAltHex).copy(alpha = 0.7f),
-                        border = if (isAutocorrectMatch) androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.6f)) else null,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onSuggestionClick(word) }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                // Expand / Collapse Chevron Button (">" toggle as specified in PRD 3.3)
+                IconButton(
+                    onClick = { isToolbarExpanded = !isToolbarExpanded },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    AppIcon(
+                        glyph = AppIconGlyph.CHEVRON_DOWN,
+                        packType = iconPackType,
+                        tint = accentColor,
+                        size = 20.dp
+                    )
+                }
+
+                // Suggestions & contextual emoji list
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Contextual Emojis (e.g. stress -> 🫠, pickle -> 🥒)
+                    contextualEmojis.forEach { emoji ->
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = accentColor.copy(alpha = 0.18f),
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, accentColor.copy(alpha = 0.4f)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { onSuggestionClick(emoji) }
                         ) {
-                            if (isAutocorrectMatch) {
-                                Text(
-                                    text = "✨",
-                                    fontSize = 11.sp
-                                )
+                            Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                Text(text = emoji, fontSize = 16.sp)
                             }
-                            Text(
-                                text = word,
-                                fontSize = 13.sp,
-                                fontWeight = if (isAutocorrectMatch) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isAutocorrectMatch) accentColor else textColor
-                            )
                         }
                     }
+
+                    // Word suggestions & Autocorrect matches
+                    if (suggestions.isEmpty() && contextualEmojis.isEmpty()) {
+                        Text(
+                            text = "Clacksy • Type naturally or swipe to glide",
+                            fontSize = 12.sp,
+                            color = textColor.copy(alpha = 0.45f),
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+
+                    suggestions.forEachIndexed { index, word ->
+                        val isAutocorrectMatch = index == 0 && lastWord.isNotBlank() && !word.equals(lastWord, ignoreCase = true)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isAutocorrectMatch) accentColor.copy(alpha = 0.22f) else Color(theme.keyCapAltHex).copy(alpha = 0.7f),
+                            border = if (isAutocorrectMatch) androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.6f)) else null,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { onSuggestionClick(word) }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                if (isAutocorrectMatch) {
+                                    Text(
+                                        text = "✨",
+                                        fontSize = 11.sp
+                                    )
+                                }
+                                Text(
+                                    text = word,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isAutocorrectMatch) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isAutocorrectMatch) accentColor else textColor
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Voice Dictation quick mic on the far right of suggestion strip
+                IconButton(
+                    onClick = onToggleVoiceTyping,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    AppIcon(
+                        glyph = AppIconGlyph.MIC,
+                        packType = iconPackType,
+                        tint = textColor.copy(alpha = 0.8f),
+                        size = 18.dp
+                    )
                 }
             }
             HorizontalDivider(color = textColor.copy(alpha = 0.08f), thickness = 0.5.dp)
@@ -295,10 +366,53 @@ fun GboardTopBar(
                         .fillMaxWidth()
                         .height(40.dp)
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // Close / Collapse Toolbar button
+                    IconButton(
+                        onClick = { isToolbarExpanded = false },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        AppIcon(
+                            glyph = AppIconGlyph.CLEAR,
+                            packType = iconPackType,
+                            tint = textColor.copy(alpha = 0.6f),
+                            size = 16.dp
+                        )
+                    }
+
+                    // Real-Time Inline Translation
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.TRANSLATE,
+                        packType = iconPackType,
+                        tint = if (keyboardMode == KeyboardMode.TRANSLATE) accentColor else textColor,
+                        badgeText = "Translate",
+                        tooltip = "Inline Translation",
+                        onClick = onOpenTranslate
+                    )
+
+                    // Precision Text Editing Mode
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.TEXT_EDIT,
+                        packType = iconPackType,
+                        tint = if (keyboardMode == KeyboardMode.TEXT_EDITING) accentColor else textColor,
+                        badgeText = "Edit",
+                        tooltip = "Cursor & Selection Pad",
+                        onClick = onOpenTextEditing
+                    )
+
+                    // One-Handed & Floating Mode Toggle
+                    ToolbarIconItem(
+                        glyph = AppIconGlyph.ONE_HANDED,
+                        packType = iconPackType,
+                        tint = textColor,
+                        badgeText = "Floating",
+                        tooltip = "Cycle Floating / One-Handed Layout",
+                        onClick = onCycleLayoutMode
+                    )
+
                     // Quick Settings & Resizing
                     ToolbarIconItem(
                         glyph = AppIconGlyph.SETTINGS,

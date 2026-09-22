@@ -47,11 +47,13 @@ fun RowScope.MechanicalKey(
     testTagId: String? = null,
     isRepeatable: Boolean = false,
     onKeyTriggered: () -> Unit = {},
-    onLongPress: (() -> Unit)? = null
+    onLongPress: (() -> Unit)? = null,
+    onHorizontalDrag: ((Float) -> Unit)? = null
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val currentOnKeyTriggered by rememberUpdatedState(onKeyTriggered)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val currentOnHorizontalDrag by rememberUpdatedState(onHorizontalDrag)
     val coroutineScope = rememberCoroutineScope()
 
     // Fast, crisp key travel physics animation
@@ -61,9 +63,11 @@ fun RowScope.MechanicalKey(
         label = "mech_3d_key_travel"
     )
 
+    val isBorderless = theme.isBorderlessTheme
     val keyCapColor = when {
         isAccent -> Color(theme.accentHex)
         isAlt -> Color(theme.keyCapAltHex)
+        isBorderless -> Color.Transparent
         else -> Color(theme.keyCapHex)
     }
 
@@ -73,15 +77,17 @@ fun RowScope.MechanicalKey(
     }
 
     val isRetro95 = theme == KeyboardThemeType.RETRO_95_PIXEL
-    val cornerRadius = when (theme) {
-        KeyboardThemeType.MINIMAL_DARK, KeyboardThemeType.MINIMAL_LIGHT -> 8.dp
-        KeyboardThemeType.AMOLED_BLACK -> 9.dp
-        KeyboardThemeType.RETRO_95_PIXEL -> 2.dp
-        KeyboardThemeType.WHATSAPP_DARK, KeyboardThemeType.WHATSAPP_LIGHT -> 10.dp
-        KeyboardThemeType.ANDROID_17_PILL -> 14.dp
-        KeyboardThemeType.IOS_FROSTED_DARK -> 7.dp
-        KeyboardThemeType.CYBERPUNK_MECH -> 6.dp
-        KeyboardThemeType.RETRO_MODEL_M -> 4.dp
+    val cornerRadius = when {
+        isBorderless -> 6.dp
+        theme == KeyboardThemeType.MINIMAL_DARK || theme == KeyboardThemeType.MINIMAL_LIGHT -> 8.dp
+        theme == KeyboardThemeType.AMOLED_BLACK -> 9.dp
+        theme == KeyboardThemeType.RETRO_95_PIXEL -> 2.dp
+        theme == KeyboardThemeType.WHATSAPP_DARK || theme == KeyboardThemeType.WHATSAPP_LIGHT -> 10.dp
+        theme == KeyboardThemeType.ANDROID_17_PILL -> 14.dp
+        theme == KeyboardThemeType.IOS_FROSTED_DARK -> 7.dp
+        theme == KeyboardThemeType.CYBERPUNK_MECH -> 6.dp
+        theme == KeyboardThemeType.RETRO_MODEL_M -> 4.dp
+        else -> 8.dp
     }
 
     // 3D Lighting & Bevel Colors
@@ -99,15 +105,30 @@ fun RowScope.MechanicalKey(
         modifier = Modifier
             .weight(weight)
             .height(height)
-            .padding(horizontal = 2.5.dp, vertical = 2.dp)
+            .padding(horizontal = if (isBorderless) 1.5.dp else 2.5.dp, vertical = 2.dp)
             .then(if (testTagId != null) Modifier.testTag(testTagId) else Modifier)
-            .pointerInput(isRepeatable) {
+            .pointerInput(isRepeatable, onHorizontalDrag != null) {
                 awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
+                    val down = awaitFirstDown(requireUnconsumed = false)
                     isPressed = true
                     currentOnKeyTriggered()
 
-                    if (isRepeatable) {
+                    if (onHorizontalDrag != null) {
+                        var totalDrag = 0f
+                        var lastX = down.position.x
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull() ?: break
+                            if (!change.pressed) break
+                            val dx = change.position.x - lastX
+                            lastX = change.position.x
+                            totalDrag += dx
+                            if (kotlin.math.abs(totalDrag) > 18f) {
+                                currentOnHorizontalDrag?.invoke(totalDrag)
+                                totalDrag = 0f
+                            }
+                        }
+                    } else if (isRepeatable) {
                         val repeatJob = coroutineScope.launch {
                             delay(350L) // Initial hold threshold
                             while (isActive) {
@@ -125,7 +146,7 @@ fun RowScope.MechanicalKey(
             },
         contentAlignment = Alignment.Center
     ) {
-        val isMinimal = theme == KeyboardThemeType.MINIMAL_DARK || theme == KeyboardThemeType.MINIMAL_LIGHT
+        val isMinimal = isBorderless || theme == KeyboardThemeType.MINIMAL_DARK || theme == KeyboardThemeType.MINIMAL_LIGHT
 
         // 1. Layer 0: Deep Plate Cavity & Drop Shadow
         if (!isMinimal) {
