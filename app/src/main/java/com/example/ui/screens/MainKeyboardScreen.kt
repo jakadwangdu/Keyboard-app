@@ -76,6 +76,7 @@ fun MainKeyboardScreen(
             ConversationChatView(
                 messages = messages,
                 activeText = activeText,
+                cursorPosition = cursorPosition,
                 iconPackType = iconPackType,
                 theme = theme,
                 currentSwitch = currentSwitch,
@@ -85,6 +86,7 @@ fun MainKeyboardScreen(
                 onClearChat = { viewModel.clearChat() },
                 onReactionClick = { msgId, reaction -> viewModel.addReaction(msgId, reaction) },
                 onUpdateActiveText = { viewModel.updateActiveText(it) },
+                onCursorPositionChange = { viewModel.setCursorPosition(it) },
                 onCopyMessage = { viewModel.copyToSystemClipboard(it) },
                 modifier = Modifier
                     .weight(1f)
@@ -203,7 +205,8 @@ fun MainKeyboardScreen(
                                     onBackspace = { viewModel.backspace() },
                                     onSendOrEnter = { viewModel.sendMessage() },
                                     onToggleAltSymbols = { viewModel.toggleAltSymbols() },
-                                    onSwitchMode = { viewModel.setMode(it) }
+                                    onSwitchMode = { viewModel.setMode(it) },
+                                    onScrubCursor = { delta -> viewModel.moveCursor(delta) }
                                 )
                             }
                             KeyboardMode.EMOJI_DRAWER, KeyboardMode.STICKERS_DRAWER -> {

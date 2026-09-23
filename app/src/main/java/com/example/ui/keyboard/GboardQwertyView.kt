@@ -26,7 +26,7 @@ fun GboardQwertyView(
     theme: KeyboardThemeType,
     isShiftActive: Boolean,
     isCapsLock: Boolean,
-    glideTypingEnabled: Boolean = true,
+    glideTypingEnabled: Boolean = false,
     keyHeight: Dp = 50.dp,
     onKeyPressed: (String) -> Unit,
     onBackspace: () -> Unit,

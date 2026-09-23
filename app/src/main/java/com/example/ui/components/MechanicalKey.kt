@@ -39,7 +39,7 @@ fun RowScope.MechanicalKey(
     secondaryText: String? = null,
     iconGlyph: AppIconGlyph? = null,
     iconPackType: IconPackType = IconPackType.WHATSAPP_EXPRESSIVE,
-    theme: KeyboardThemeType = KeyboardThemeType.WHATSAPP_DARK,
+    theme: KeyboardThemeType = KeyboardThemeType.MINIMAL_DARK,
     isAccent: Boolean = false,
     isAlt: Boolean = false,
     weight: Float = 1f,
@@ -57,12 +57,8 @@ fun RowScope.MechanicalKey(
     val currentOnHorizontalDrag by rememberUpdatedState(onHorizontalDrag)
     val coroutineScope = rememberCoroutineScope()
 
-    // Fast, crisp key travel physics animation
-    val travelOffset by animateFloatAsState(
-        targetValue = if (isPressed) 2.5f else 0f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 3200f),
-        label = "mech_3d_key_travel"
-    )
+    // Instant, zero-overhead mechanical travel offset (bypasses spring state recomposition overhead)
+    val travelOffset = if (isPressed) 2f else 0f
 
     val isBorderless = theme.isBorderlessTheme
     val keyCapColor = when {
@@ -114,13 +110,12 @@ fun RowScope.MechanicalKey(
                     isPressed = true
 
                     if (onHorizontalDrag != null) {
-                        // Spacebar: Track whether it's a tap or a long-press/drag for cursor scrubbing
+                        // Spacebar: Track whether it's a tap or a hold/swipe for cursor scrubbing
                         var isScrubbing = false
                         var accumulatedDelta = 0f
                         var lastX = down.position.x
                         val startTime = System.currentTimeMillis()
 
-                        // Wait for drag or hold
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull() ?: break
@@ -131,31 +126,39 @@ fun RowScope.MechanicalKey(
                             accumulatedDelta += dx
 
                             val elapsed = System.currentTimeMillis() - startTime
-                            if (!isScrubbing && (elapsed > 200L || kotlin.math.abs(accumulatedDelta) > 10f)) {
+                            if (!isScrubbing && (elapsed >= 180L || kotlin.math.abs(accumulatedDelta) >= 8f)) {
                                 isScrubbing = true
                                 isScrubbingActive = true
+                                change.consume()
                             }
 
                             if (isScrubbing) {
-                                if (kotlin.math.abs(accumulatedDelta) > 16f) {
-                                    currentOnHorizontalDrag?.invoke(accumulatedDelta)
-                                    accumulatedDelta = 0f
+                                change.consume()
+                                // Step threshold: 12px per character cursor jump
+                                val stepThreshold = 12f
+                                while (accumulatedDelta >= stepThreshold) {
+                                    currentOnHorizontalDrag?.invoke(stepThreshold)
+                                    accumulatedDelta -= stepThreshold
+                                }
+                                while (accumulatedDelta <= -stepThreshold) {
+                                    currentOnHorizontalDrag?.invoke(-stepThreshold)
+                                    accumulatedDelta += stepThreshold
                                 }
                             }
                         }
 
                         if (!isScrubbing) {
-                            // Quick tap without holding/dragging -> insert space
+                            // Quick tap without holding/swiping -> insert space
                             currentOnKeyTriggered()
                         }
                         isScrubbingActive = false
                     } else if (isRepeatable) {
                         currentOnKeyTriggered()
                         val repeatJob = coroutineScope.launch {
-                            delay(350L) // Initial hold threshold
+                            delay(300L) // Initial hold threshold
                             while (isActive) {
                                 currentOnKeyTriggered()
-                                delay(45L) // Continuous fast deletion
+                                delay(40L) // Fast repeat
                             }
                         }
                         waitForUpOrCancellation()

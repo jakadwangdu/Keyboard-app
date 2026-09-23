@@ -199,9 +199,17 @@ object AutocorrectEngine {
         }
 
         // 4. Misspelled word: Compute Levenshtein distance & keyboard proximity score
-        val scoredWords = dictionary.mapNotNull { dictWord ->
+        // Fast prune: only test words with matching initial letters or length within ±2
+        val candidatesPool = dictionary.filter { dictWord ->
+            abs(word.length - dictWord.length) <= 2 &&
+            (dictWord.first() == word.first() || (word.length >= 2 && dictWord.startsWith(word.substring(0, 2))))
+        }
+
+        val poolToSearch = if (candidatesPool.isNotEmpty()) candidatesPool else dictionary.filter { abs(word.length - it.length) <= 1 }
+
+        val scoredWords = poolToSearch.mapNotNull { dictWord ->
             val dist = levenshteinDistance(word, dictWord)
-            if (dist <= 2 && abs(word.length - dictWord.length) <= 2) {
+            if (dist <= 2) {
                 val score = 1.0f - (dist.toFloat() / maxOf(word.length, dictWord.length))
                 dictWord to score
             } else null
@@ -226,22 +234,32 @@ object AutocorrectEngine {
     }
 
     /**
-     * Compute Levenshtein Edit Distance between two strings.
+     * Compute Levenshtein Edit Distance using optimized 1D rolling array (zero 2D-heap allocations).
      */
     private fun levenshteinDistance(s1: String, s2: String): Int {
-        val dp = Array(s1.length + 1) { IntArray(s2.length + 1) }
-        for (i in 0..s1.length) dp[i][0] = i
-        for (j in 0..s2.length) dp[0][j] = j
+        if (s1 == s2) return 0
+        if (s1.isEmpty()) return s2.length
+        if (s2.isEmpty()) return s1.length
 
-        for (i in 1..s1.length) {
-            for (j in 1..s2.length) {
-                val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
-                dp[i][j] = min(
-                    min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
-                    dp[i - 1][j - 1] + cost
+        val len0 = s1.length
+        val len1 = s2.length
+        var prev = IntArray(len1 + 1) { it }
+        var curr = IntArray(len1 + 1)
+
+        for (i in 0 until len0) {
+            curr[0] = i + 1
+            for (j in 0 until len1) {
+                val cost = if (s1[i] == s2[j]) 0 else 1
+                curr[j + 1] = minOf(
+                    curr[j] + 1,        // insertion
+                    prev[j + 1] + 1,    // deletion
+                    prev[j] + cost      // substitution
                 )
             }
+            val temp = prev
+            prev = curr
+            curr = temp
         }
-        return dp[s1.length][s2.length]
+        return prev[len1]
     }
 }

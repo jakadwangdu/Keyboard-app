@@ -161,6 +161,23 @@ class MechanicalAudioEngine(private val context: Context) {
         }
     }
 
+    // Pre-cached VibrationEffects for zero-latency execution
+    private val clickEffect: VibrationEffect? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        try { VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK) } catch (_: Exception) { null }
+    } else null
+
+    private val tickEffect: VibrationEffect? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        try { VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK) } catch (_: Exception) { null }
+    } else null
+
+    private val heavyEffect: VibrationEffect? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        try { VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK) } catch (_: Exception) { null }
+    } else null
+
+    private val doubleClickEffect: VibrationEffect? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        try { VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK) } catch (_: Exception) { null }
+    } else null
+
     fun playKeyPressSound(switch: SwitchType = currentSwitch, pitchShift: Float = 1.0f) {
         if (isSoundEnabled && volumeLevel > 0.01f) {
             val soundId = soundIdMap[switch]
@@ -175,25 +192,48 @@ class MechanicalAudioEngine(private val context: Context) {
         }
     }
 
-    fun triggerHaptic(switch: SwitchType = currentSwitch) {
-        try {
-            if (vibrator == null || !vibrator.hasVibrator()) return
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val effect = when (switch) {
-                    SwitchType.BLUE_CLICKY -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
-                    SwitchType.BROWN_TACTILE -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                    SwitchType.RED_LINEAR -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-                    SwitchType.CREAM_THOCK -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
-                    SwitchType.MODEL_M_SPRING -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
+    /**
+     * Ultra-responsive micro-haptic tick when dragging cursor over spacebar
+     */
+    fun triggerCursorTick() {
+        if (!isHapticEnabled || hapticStrength <= 0.05f || vibrator == null) return
+        scope.launch {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && tickEffect != null) {
+                    vibrator.vibrate(tickEffect)
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(8L)
                 }
-                vibrator.vibrate(effect)
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate((15 * hapticStrength).toLong().coerceAtLeast(5))
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun triggerHaptic(switch: SwitchType = currentSwitch) {
+        if (vibrator == null || !isHapticEnabled || hapticStrength <= 0.05f) return
+        scope.launch {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val effect = when (switch) {
+                        SwitchType.BLUE_CLICKY -> clickEffect ?: tickEffect
+                        SwitchType.BROWN_TACTILE -> tickEffect
+                        SwitchType.RED_LINEAR -> tickEffect
+                        SwitchType.CREAM_THOCK -> heavyEffect ?: clickEffect
+                        SwitchType.MODEL_M_SPRING -> doubleClickEffect ?: clickEffect
+                    }
+                    if (effect != null) {
+                        vibrator.vibrate(effect)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vibrator.vibrate((12 * hapticStrength).toLong().coerceAtLeast(4))
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate((12 * hapticStrength).toLong().coerceAtLeast(4))
+                }
+            } catch (_: Exception) {
+                // Ignore haptic exceptions
             }
-        } catch (_: Exception) {
-            // Ignore haptic exceptions
         }
     }
 }

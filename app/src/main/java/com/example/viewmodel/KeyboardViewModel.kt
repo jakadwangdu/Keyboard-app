@@ -12,6 +12,8 @@ import com.example.audio.MechanicalAudioEngine
 import com.example.engine.AutocorrectEngine
 import com.example.engine.CorrectionCandidate
 import com.example.model.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -247,12 +249,17 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private var suggestionJob: Job? = null
+
     fun typeKey(key: String) {
         val current = _activeText.value
+        val pos = _cursorPosition.value.coerceIn(0, current.length)
 
         // If user tapped Spacebar, check if autocorrect is enabled and the current word has an autocorrect suggestion
         if (key == " ") {
-            val words = current.split(" ").toMutableList()
+            val beforeCursor = current.substring(0, pos)
+            val afterCursor = current.substring(pos)
+            val words = beforeCursor.split(" ").toMutableList()
             val lastWord = words.lastOrNull()?.trim() ?: ""
             val activeCandidates = _candidates.value
             val autoCorrectMatch = activeCandidates.firstOrNull { it.isAutoCorrect }
@@ -260,23 +267,31 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
             if (_isAutocorrectOn.value && lastWord.isNotEmpty() && autoCorrectMatch != null && !lastWord.equals(autoCorrectMatch.word, ignoreCase = true)) {
                 // Auto-correct misspelled word on spacebar tap!
                 words[words.size - 1] = autoCorrectMatch.word
-                _activeText.value = words.joinToString(" ") + " "
+                val newBefore = words.joinToString(" ") + " "
+                val newFullText = newBefore + afterCursor
+                _activeText.value = newFullText
+                _cursorPosition.value = newBefore.length
                 _suggestions.value = emptyList()
                 _candidates.value = emptyList()
                 audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)
                 return
             }
 
-            val updated = current + " "
+            val updated = beforeCursor + " " + afterCursor
             _activeText.value = updated
+            _cursorPosition.value = pos + 1
             _suggestions.value = emptyList()
             _candidates.value = emptyList()
             audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.95f)
             return
         }
 
-        val updated = current + key
+        val before = current.substring(0, pos)
+        val after = current.substring(pos)
+        val updated = before + key + after
+        val newPos = pos + key.length
         _activeText.value = updated
+        _cursorPosition.value = newPos
 
         // Lowercase shift if not caps lock
         if (_isShiftActive.value && !_isCapsLock.value) {
@@ -286,47 +301,63 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         // Trigger mechanical audio
         audioEngine.playKeyPressSound(_currentSwitch.value)
 
-        // Compute predictive suggestions & spell checking
-        updateSuggestions(updated)
+        // Compute predictive suggestions & spell checking asynchronously
+        updateSuggestions(updated, newPos)
     }
 
     fun backspace() {
         val current = _activeText.value
-        if (current.isNotEmpty()) {
-            val updated = current.dropLast(1)
+        val pos = _cursorPosition.value.coerceIn(0, current.length)
+        if (pos > 0 && current.isNotEmpty()) {
+            val before = current.substring(0, pos - 1)
+            val after = current.substring(pos)
+            val updated = before + after
+            val newPos = pos - 1
             _activeText.value = updated
+            _cursorPosition.value = newPos
             audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 0.88f)
-            updateSuggestions(updated)
+            updateSuggestions(updated, newPos)
         }
     }
 
-    fun updateActiveText(newText: String) {
+    fun updateActiveText(newText: String, newCursorPos: Int? = null) {
         _activeText.value = newText
-        updateSuggestions(newText)
+        val targetPos = newCursorPos ?: newText.length
+        _cursorPosition.value = targetPos.coerceIn(0, newText.length)
+        updateSuggestions(newText, _cursorPosition.value)
     }
 
-    private fun updateSuggestions(text: String) {
+    fun setCursorPosition(pos: Int) {
+        _cursorPosition.value = pos.coerceIn(0, _activeText.value.length)
+    }
+
+    private fun updateSuggestions(text: String, cursorPos: Int = text.length) {
+        suggestionJob?.cancel()
         if (text.isBlank()) {
             _suggestions.value = emptyList()
             _candidates.value = emptyList()
             return
         }
-        val lastWord = text.split(" ").lastOrNull() ?: ""
-        if (lastWord.isBlank()) {
-            _suggestions.value = listOf("the", "you", "thanks", "sounds great", "let's go")
-            _candidates.value = emptyList()
-            return
-        }
 
-        val rawCandidates = AutocorrectEngine.getCorrections(lastWord)
-        val candidatesList = if (_isAutocorrectOn.value) {
-            rawCandidates
-        } else {
-            // When autocorrect is turned off, do not flag words for auto-correction on space
-            rawCandidates.map { it.copy(isAutoCorrect = false) }
+        suggestionJob = viewModelScope.launch(Dispatchers.Default) {
+            val safePos = cursorPos.coerceIn(0, text.length)
+            val beforeCursor = text.substring(0, safePos)
+            val lastWord = beforeCursor.split(" ").lastOrNull() ?: ""
+            if (lastWord.isBlank()) {
+                _suggestions.value = listOf("the", "you", "thanks", "sounds great", "let's go")
+                _candidates.value = emptyList()
+                return@launch
+            }
+
+            val rawCandidates = AutocorrectEngine.getCorrections(lastWord)
+            val candidatesList = if (_isAutocorrectOn.value) {
+                rawCandidates
+            } else {
+                rawCandidates.map { it.copy(isAutoCorrect = false) }
+            }
+            _candidates.value = candidatesList
+            _suggestions.value = candidatesList.map { it.word }
         }
-        _candidates.value = candidatesList
-        _suggestions.value = candidatesList.map { it.word }
     }
 
     fun applySuggestion(word: String) {
@@ -618,9 +649,12 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     // ─── Precision Text Editing Controls ───
     fun moveCursor(delta: Int) {
         val text = _activeText.value
-        val newPos = (_cursorPosition.value + delta).coerceIn(0, text.length)
-        _cursorPosition.value = newPos
-        audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.05f)
+        val cur = _cursorPosition.value.coerceIn(0, text.length)
+        val newPos = (cur + delta).coerceIn(0, text.length)
+        if (newPos != cur) {
+            _cursorPosition.value = newPos
+            audioEngine.triggerCursorTick()
+        }
     }
 
     fun moveCursorToStart() {

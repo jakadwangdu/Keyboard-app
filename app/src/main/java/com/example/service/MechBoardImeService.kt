@@ -1,5 +1,6 @@
 package com.example.service
 
+import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.view.KeyEvent
 import android.view.View
@@ -138,11 +139,16 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                         surface = Color(0xFF141A21)
                     )
                 ) {
+                    val prefs = remember { getSharedPreferences("clacksy_keyboard_prefs", Context.MODE_PRIVATE) }
+                    val initialTheme = remember {
+                        val themeName = prefs.getString("default_theme", KeyboardThemeType.MINIMAL_DARK.name)
+                        KeyboardThemeType.entries.find { it.name == themeName } ?: KeyboardThemeType.MINIMAL_DARK
+                    }
                     var currentMode by remember { mutableStateOf(KeyboardMode.QWERTY) }
                     var isShiftActive by remember { mutableStateOf(false) }
                     var isCapsLock by remember { mutableStateOf(false) }
                     var isAltSymbols by remember { mutableStateOf(false) }
-                    var currentTheme by remember { mutableStateOf(KeyboardThemeType.AMOLED_BLACK) }
+                    var currentTheme by remember { mutableStateOf(initialTheme) }
                     var currentSwitch by remember { mutableStateOf(SwitchType.CREAM_THOCK) }
                     var iconPackType by remember { mutableStateOf(IconPackType.WHATSAPP_EXPRESSIVE) }
                     var isSoundOn by remember { mutableStateOf(true) }
@@ -298,7 +304,18 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
                                         },
                                         onToggleAltSymbols = { isAltSymbols = !isAltSymbols },
-                                        onSwitchMode = { currentMode = it }
+                                        onSwitchMode = { currentMode = it },
+                                        onScrubCursor = { delta ->
+                                            val ic = currentInputConnection ?: return@GboardSymbolsView
+                                            if (delta > 0) {
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT))
+                                            } else if (delta < 0) {
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
+                                            }
+                                            audioEngine.triggerCursorTick()
+                                        }
                                     )
                                 }
                                 KeyboardMode.EMOJI_DRAWER, KeyboardMode.STICKERS_DRAWER -> {
@@ -335,7 +352,18 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
                                         },
                                         onToggleShift = { isShiftActive = !isShiftActive },
-                                        onSwitchMode = { currentMode = it }
+                                        onSwitchMode = { currentMode = it },
+                                        onScrubCursor = { delta ->
+                                            val ic = currentInputConnection ?: return@GboardQwertyView
+                                            if (delta > 0) {
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT))
+                                            } else if (delta < 0) {
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
+                                            }
+                                            audioEngine.triggerCursorTick()
+                                        }
                                     )
                                 }
                             }

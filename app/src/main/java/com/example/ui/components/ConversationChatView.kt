@@ -27,8 +27,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import com.example.icons.AppIcon
 import com.example.icons.AppIconGlyph
 import com.example.model.*
@@ -47,11 +49,26 @@ fun ConversationChatView(
     onClearChat: () -> Unit,
     onReactionClick: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
+    cursorPosition: Int = activeText.length,
+    onCursorPositionChange: ((Int) -> Unit)? = null,
     onUpdateActiveText: ((String) -> Unit)? = null,
     onCopyMessage: ((String) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    var textFieldValue by remember {
+        val safePos = cursorPosition.coerceIn(0, activeText.length)
+        mutableStateOf(TextFieldValue(activeText, TextRange(safePos)))
+    }
+
+    // Keep textFieldValue in perfect sync with activeText and cursor scrubbing
+    LaunchedEffect(activeText, cursorPosition) {
+        val safePos = cursorPosition.coerceIn(0, activeText.length)
+        if (textFieldValue.text != activeText || textFieldValue.selection.end != safePos) {
+            textFieldValue = TextFieldValue(text = activeText, selection = TextRange(safePos))
+        }
+    }
 
     // Auto-scroll to latest message on update
     LaunchedEffect(messages.size) {
@@ -292,8 +309,14 @@ fun ConversationChatView(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         BasicTextField(
-                            value = activeText,
-                            onValueChange = { onUpdateActiveText?.invoke(it) },
+                            value = textFieldValue,
+                            onValueChange = { newValue ->
+                                textFieldValue = newValue
+                                if (newValue.text != activeText) {
+                                    onUpdateActiveText?.invoke(newValue.text)
+                                }
+                                onCursorPositionChange?.invoke(newValue.selection.end)
+                            },
                             textStyle = TextStyle(
                                 fontSize = 15.sp,
                                 fontWeight = if (isRetro95) FontWeight.Medium else FontWeight.Normal,
