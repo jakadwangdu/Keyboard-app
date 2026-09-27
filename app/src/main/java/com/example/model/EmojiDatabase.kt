@@ -11,7 +11,18 @@ data class EmojiCategory(
 
 object EmojiDatabase {
 
+    val metaWhatsAppNewEmojis: List<String> = listOf(
+        // Unicode 15.1 & 16.0 latest Meta WhatsApp additions
+        "🐦‍🔥", "🍄‍🟫", "🍋‍🟩", "⛓️‍💥", "🙂‍↕️", "🙂‍↔️", "🫩", "🫟", "🫗", "🪾", "🪮", "🪚", "🫚", "🫛",
+        "🧑‍🧑‍🧒", "🧑‍🧒‍🧒", "🧑‍🧒", "🚶‍➡️", "🏃‍➡️", "🧑‍🦼‍➡️", "🧑‍🦯‍➡️",
+        // Meta WhatsApp Chat Reactions & Signatures
+        "💚", "💬", "🟢", "✅", "✔️", "☑️", "🤙", "📞", "📹", "🎙️", "🔊", "🔒",
+        "🫧", "🩷", "🩵", "🩶", "🪿", "🫎", "🪼", "🫏", "🪽", "🪻", "🪩", "🪫", "🪬",
+        "🫶", "🫰", "🫵", "🫡", "🫠", "🫨", "🥹", "🔥", "❤️", "😂", "👍", "🎉", "💯", "✨", "🚀", "👑"
+    )
+
     val unicode18NewEmojis: List<String> = listOf(
+        "🐦‍🔥", "🍄‍🟫", "🍋‍🟩", "⛓️‍💥", "🙂‍↕️", "🙂‍↔️", "🫩", "🫟", "🫗", "🪾", "🪮", "🪚",
         "🫠", "🫨", "🥹", "🫡", "🫶", "🫰", "🫵", "🫱", "🫲", "🫳",
         "🫴", "🫸", "🫷", "🩷", "🩵", "🩶", "🫧", "🪿", "🫎", "🪼",
         "🫏", "🪽", "🪻", "🫚", "🫛", "🪩", "🪫", "🪬", "🪄", "🪆",
@@ -21,8 +32,14 @@ object EmojiDatabase {
     val allCategories: List<EmojiCategory> by lazy {
         listOf(
             EmojiCategory(
+                id = "meta_whatsapp",
+                title = "💬 Meta WhatsApp New (2025/2026)",
+                iconGlyph = AppIconGlyph.WHATSAPP,
+                emojis = metaWhatsAppNewEmojis
+            ),
+            EmojiCategory(
                 id = "unicode18",
-                title = "✨ Unicode 18.0 (2026)",
+                title = "✨ Unicode 18.0 & 16.0",
                 iconGlyph = AppIconGlyph.REACTION_FIRE,
                 emojis = unicode18NewEmojis
             ),

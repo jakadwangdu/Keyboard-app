@@ -56,6 +56,7 @@ fun GboardQwertyView(
     var layoutSize by remember { mutableStateOf(IntSize.Zero) }
     var trailPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
     var normalizedPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var isGlideGestureActive by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -66,7 +67,9 @@ fun GboardQwertyView(
                     Modifier.pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = { startOffset ->
-                                if (layoutSize.width > 0 && layoutSize.height > 0) {
+                                // Only trigger glide typing when gesture originates in letter rows (top 72%), never spacebar
+                                if (layoutSize.width > 0 && layoutSize.height > 0 && startOffset.y < layoutSize.height * 0.72f) {
+                                    isGlideGestureActive = true
                                     trailPoints = listOf(startOffset)
                                     normalizedPoints = listOf(
                                         Offset(
@@ -74,10 +77,12 @@ fun GboardQwertyView(
                                             startOffset.y / layoutSize.height.toFloat()
                                         )
                                     )
+                                } else {
+                                    isGlideGestureActive = false
                                 }
                             },
                             onDrag = { change, _ ->
-                                if (layoutSize.width > 0 && layoutSize.height > 0) {
+                                if (isGlideGestureActive && layoutSize.width > 0 && layoutSize.height > 0) {
                                     val currentPos = change.position
                                     trailPoints = (trailPoints + currentPos).takeLast(40)
                                     normalizedPoints = (normalizedPoints + Offset(
@@ -87,7 +92,7 @@ fun GboardQwertyView(
                                 }
                             },
                             onDragEnd = {
-                                if (normalizedPoints.size >= 3) {
+                                if (isGlideGestureActive && normalizedPoints.size >= 3) {
                                     val candidates = GlideTypingEngine.recognizeGlidePath(normalizedPoints)
                                     if (candidates.isNotEmpty()) {
                                         val best = candidates.first().word
@@ -97,10 +102,12 @@ fun GboardQwertyView(
                                         onGlideWordCommitted(formatted)
                                     }
                                 }
+                                isGlideGestureActive = false
                                 trailPoints = emptyList()
                                 normalizedPoints = emptyList()
                             },
                             onDragCancel = {
+                                isGlideGestureActive = false
                                 trailPoints = emptyList()
                                 normalizedPoints = emptyList()
                             }

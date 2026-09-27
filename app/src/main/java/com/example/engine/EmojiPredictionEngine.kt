@@ -63,7 +63,13 @@ object EmojiPredictionEngine {
         "cool" to listOf("😎", "🕶️", "🔥", "🧊"),
         "wave" to listOf("👋", "🌊", "🫡"),
         "salute" to listOf("🫡", "🎖️", "🤝"),
-        "bubble" to listOf("🫧", "🧼", "🛁")
+        "bubble" to listOf("🫧", "🧼", "🛁"),
+        "whatsapp" to listOf("💚", "💬", "🟢", "📱", "✔️", "☑️"),
+        "meta" to listOf("💬", "💚", "👍", "✨"),
+        "nod" to listOf("🙂‍↕️", "👍", "👌"),
+        "shake" to listOf("🙂‍↔️", "👎", "❌"),
+        "yes" to listOf("🙂‍↕️", "👍", "✅", "✔️"),
+        "no" to listOf("🙂‍↔️", "👎", "❌")
     )
 
     // GIF animated reaction cards catalog

@@ -71,7 +71,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _isAutocorrectOn = MutableStateFlow(false)
     val isAutocorrectOn: StateFlow<Boolean> = _isAutocorrectOn.asStateFlow()
 
-    private val _isGlideTypingOn = MutableStateFlow(true)
+    private val _isGlideTypingOn = MutableStateFlow(false)
     val isGlideTypingOn: StateFlow<Boolean> = _isGlideTypingOn.asStateFlow()
 
     private val _layoutMode = MutableStateFlow<KeyboardLayoutMode>(KeyboardLayoutMode.FULL_WIDTH)
@@ -160,7 +160,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
             val savedHapticStrength = prefs.getFloat("default_haptic_strength", 0.7f)
             audioEngine.hapticStrength = savedHapticStrength
 
-            val savedGlideOn = prefs.getBoolean("default_glide_enabled", true)
+            val savedGlideOn = prefs.getBoolean("default_glide_enabled", false)
             _isGlideTypingOn.value = savedGlideOn
 
             val savedAutocorrectOn = prefs.getBoolean("default_autocorrect_enabled", false)

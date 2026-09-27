@@ -160,6 +160,19 @@ fun GboardTopBar(
                     }
                 }
 
+                // Quick One-Handed Mode Toggle
+                IconButton(
+                    onClick = onCycleLayoutMode,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    AppIcon(
+                        glyph = AppIconGlyph.ONE_HANDED,
+                        packType = iconPackType,
+                        tint = textColor.copy(alpha = 0.75f),
+                        size = 17.dp
+                    )
+                }
+
                 // Voice Dictation quick mic on the far right of suggestion strip
                 IconButton(
                     onClick = onToggleVoiceTyping,

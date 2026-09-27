@@ -40,6 +40,7 @@ import com.example.audio.MechanicalAudioEngine
 import com.example.icons.AppIcon
 import com.example.icons.AppIconGlyph
 import com.example.model.IconPackType
+import com.example.model.KeyboardLayoutMode
 import com.example.model.KeyboardThemeType
 import com.example.model.SwitchType
 
@@ -74,10 +75,13 @@ fun KeyboardSettingsDialog(
     onUpdateVolume: (Float) -> Unit,
     onUpdateHapticStrength: (Float) -> Unit,
     onOpenDefaultKeyboardSetup: () -> Unit,
+    currentLayoutMode: KeyboardLayoutMode = KeyboardLayoutMode.FULL_WIDTH,
+    onSelectLayoutMode: ((KeyboardLayoutMode) -> Unit)? = null,
     onSaveAsDefaultPreset: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var selectedHeight by remember { mutableStateOf(currentKeyHeight.value) }
+    var selectedLayoutMode by remember { mutableStateOf(currentLayoutMode) }
     var soundEnabled by remember { mutableStateOf(isSoundOn) }
     var hapticEnabled by remember { mutableStateOf(isHapticOn) }
     var autocorrectEnabled by remember { mutableStateOf(isAutocorrectOn) }
@@ -258,6 +262,73 @@ fun KeyboardSettingsDialog(
                                 ),
                                 modifier = Modifier.testTag("keyboard_height_slider")
                             )
+                        }
+                    }
+
+                    // SECTION 1.5: KEYBOARD LAYOUT & ONE-HANDED TYPING
+                    SettingsSection(
+                        title = "One-Handed Typing & Layout",
+                        icon = Icons.Default.Keyboard,
+                        accentColor = accentColor,
+                        textColor = textColor
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = cardBg,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Choose your preferred ergonomic layout mode:",
+                                    fontSize = 12.sp,
+                                    color = textColor.copy(alpha = 0.7f)
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    val layoutModes = listOf(
+                                        Pair(KeyboardLayoutMode.FULL_WIDTH, "Standard Full"),
+                                        Pair(KeyboardLayoutMode.ONE_HANDED_LEFT, "Left-Handed"),
+                                        Pair(KeyboardLayoutMode.ONE_HANDED_RIGHT, "Right-Handed")
+                                    )
+
+                                    layoutModes.forEach { (mode, label) ->
+                                        val isSelected = selectedLayoutMode == mode
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = if (isSelected) accentColor else cardBg,
+                                            border = if (isSelected) null else androidx.compose.foundation.BorderStroke(0.8.dp, textColor.copy(alpha = 0.15f)),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .clickable {
+                                                    selectedLayoutMode = mode
+                                                    onSelectLayoutMode?.invoke(mode)
+                                                    soundEngine.playKeyPressSound(currentSwitch)
+                                                }
+                                                .testTag("layout_mode_${mode.name.lowercase()}")
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = label,
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (isSelected) Color.Black else textColor,
+                                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 

@@ -29,17 +29,23 @@ import com.example.ui.keyboard.GboardEmojiStickerDrawer
 import com.example.ui.keyboard.GboardQwertyView
 import com.example.ui.keyboard.GboardSymbolsView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.model.KeyboardLayoutMode
 import com.example.ui.components.GboardTopBar
+import com.example.ui.components.OneHandedDock
 
 class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
 
@@ -155,6 +161,7 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                     var isHapticOn by remember { mutableStateOf(true) }
                     var isAutocorrectOn by remember { mutableStateOf(false) }
                     var keyHeight by remember { mutableStateOf(50.dp) }
+                    var layoutMode by remember { mutableStateOf(KeyboardLayoutMode.FULL_WIDTH) }
                     var showSettingsDialog by remember { mutableStateOf(false) }
                     var activeWord by remember { mutableStateOf("") }
                     val currentSuggestions = remember(activeWord, isAutocorrectOn) {
@@ -162,6 +169,27 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                             listOf("the", "to", "and", "hello", "keyboard")
                         } else {
                             AutocorrectEngine.getCorrections(activeWord).map { it.word }
+                        }
+                    }
+
+                    val handleScrubCursor: (Int) -> Unit = { delta ->
+                        val ic = currentInputConnection
+                        if (ic != null) {
+                            val extracted = try {
+                                ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+                            } catch (_: Exception) {
+                                null
+                            }
+                            if (extracted != null && extracted.text != null) {
+                                val cur = extracted.selectionEnd
+                                val newPos = (cur + delta).coerceIn(0, extracted.text.length)
+                                ic.setSelection(newPos, newPos)
+                            } else {
+                                val keyCode = if (delta > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+                            }
+                            audioEngine.triggerCursorTick()
                         }
                     }
 
@@ -223,149 +251,174 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                             onFormatText = { wrapper ->
                                 currentInputConnection?.commitText(wrapper, 1)
                             },
+                            onCycleLayoutMode = {
+                                layoutMode = when (layoutMode) {
+                                    KeyboardLayoutMode.FULL_WIDTH -> KeyboardLayoutMode.ONE_HANDED_RIGHT
+                                    KeyboardLayoutMode.ONE_HANDED_RIGHT -> KeyboardLayoutMode.ONE_HANDED_LEFT
+                                    KeyboardLayoutMode.ONE_HANDED_LEFT -> KeyboardLayoutMode.FULL_WIDTH
+                                    else -> KeyboardLayoutMode.FULL_WIDTH
+                                }
+                            },
                             onOpenSettings = {
                                 showSettingsDialog = true
                             }
                         )
 
-                        Box(
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(currentTheme.backgroundHex))
+                                .background(Color(currentTheme.backgroundHex)),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.Bottom
                         ) {
-                            when (currentMode) {
-                                KeyboardMode.QWERTY -> {
-                                    GboardQwertyView(
-                                        iconPackType = iconPackType,
-                                        theme = currentTheme,
-                                        isShiftActive = isShiftActive,
-                                        isCapsLock = isCapsLock,
-                                        keyHeight = keyHeight,
-                                        onKeyPressed = { key ->
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            if (key == " ") {
-                                                val candidates = AutocorrectEngine.getCorrections(activeWord)
-                                                val autoCorrect = candidates.firstOrNull { it.isAutoCorrect }
-                                                if (isAutocorrectOn && autoCorrect != null && activeWord.isNotEmpty() && !activeWord.equals(autoCorrect.word, ignoreCase = true)) {
-                                                    currentInputConnection?.deleteSurroundingText(activeWord.length, 0)
-                                                    currentInputConnection?.commitText("${autoCorrect.word} ", 1)
+                            if (layoutMode == KeyboardLayoutMode.ONE_HANDED_RIGHT) {
+                                OneHandedDock(
+                                    isLeftDock = true,
+                                    theme = currentTheme,
+                                    iconPackType = iconPackType,
+                                    onSwitchSide = { layoutMode = KeyboardLayoutMode.ONE_HANDED_LEFT },
+                                    onExpandFullWidth = { layoutMode = KeyboardLayoutMode.FULL_WIDTH },
+                                    onOpenSettings = { showSettingsDialog = true }
+                                )
+                            }
+
+                            Surface(
+                                modifier = Modifier
+                                    .then(
+                                        if (layoutMode == KeyboardLayoutMode.ONE_HANDED_LEFT || layoutMode == KeyboardLayoutMode.ONE_HANDED_RIGHT) {
+                                            Modifier.weight(1f)
+                                        } else {
+                                            Modifier.fillMaxWidth()
+                                        }
+                                    ),
+                                color = Color(currentTheme.backgroundHex)
+                            ) {
+                                when (currentMode) {
+                                    KeyboardMode.QWERTY -> {
+                                        GboardQwertyView(
+                                            iconPackType = iconPackType,
+                                            theme = currentTheme,
+                                            isShiftActive = isShiftActive,
+                                            isCapsLock = isCapsLock,
+                                            keyHeight = keyHeight,
+                                            onKeyPressed = { key ->
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                if (key == " ") {
+                                                    val candidates = AutocorrectEngine.getCorrections(activeWord)
+                                                    val autoCorrect = candidates.firstOrNull { it.isAutoCorrect }
+                                                    if (isAutocorrectOn && autoCorrect != null && activeWord.isNotEmpty() && !activeWord.equals(autoCorrect.word, ignoreCase = true)) {
+                                                        currentInputConnection?.deleteSurroundingText(activeWord.length, 0)
+                                                        currentInputConnection?.commitText("${autoCorrect.word} ", 1)
+                                                    } else {
+                                                        currentInputConnection?.commitText(" ", 1)
+                                                    }
+                                                    activeWord = ""
                                                 } else {
-                                                    currentInputConnection?.commitText(" ", 1)
+                                                    activeWord += key
+                                                    currentInputConnection?.commitText(key, 1)
                                                 }
+                                                if (isShiftActive && !isCapsLock) {
+                                                    isShiftActive = false
+                                                }
+                                            },
+                                            onBackspace = {
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                if (activeWord.isNotEmpty()) {
+                                                    activeWord = activeWord.dropLast(1)
+                                                }
+                                                handleBackspace()
+                                            },
+                                            onSendOrEnter = {
                                                 activeWord = ""
-                                            } else {
-                                                activeWord += key
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                                            },
+                                            onToggleShift = {
+                                                if (isShiftActive) {
+                                                    if (!isCapsLock) isCapsLock = true else { isShiftActive = false; isCapsLock = false }
+                                                } else {
+                                                    isShiftActive = true
+                                                }
+                                            },
+                                            onSwitchMode = { currentMode = it },
+                                            onScrubCursor = handleScrubCursor
+                                        )
+                                    }
+                                    KeyboardMode.SYMBOLS_123, KeyboardMode.SYMBOLS_ALT -> {
+                                        GboardSymbolsView(
+                                            isAltSymbols = isAltSymbols,
+                                            iconPackType = iconPackType,
+                                            theme = currentTheme,
+                                            keyHeight = keyHeight,
+                                            onKeyPressed = { key ->
+                                                audioEngine.playKeyPressSound(currentSwitch)
                                                 currentInputConnection?.commitText(key, 1)
-                                            }
-                                            if (isShiftActive && !isCapsLock) {
-                                                isShiftActive = false
-                                            }
-                                        },
-                                        onBackspace = {
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            if (activeWord.isNotEmpty()) {
-                                                activeWord = activeWord.dropLast(1)
-                                            }
-                                            handleBackspace()
-                                        },
-                                        onSendOrEnter = {
-                                            activeWord = ""
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-                                        },
-                                        onToggleShift = {
-                                            if (isShiftActive) {
-                                                if (!isCapsLock) isCapsLock = true else { isShiftActive = false; isCapsLock = false }
-                                            } else {
-                                                isShiftActive = true
-                                            }
-                                        },
-                                        onSwitchMode = { currentMode = it }
-                                    )
+                                            },
+                                            onBackspace = {
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                handleBackspace()
+                                            },
+                                            onSendOrEnter = {
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                                            },
+                                            onToggleAltSymbols = { isAltSymbols = !isAltSymbols },
+                                            onSwitchMode = { currentMode = it },
+                                            onScrubCursor = handleScrubCursor
+                                        )
+                                    }
+                                    KeyboardMode.EMOJI_DRAWER, KeyboardMode.STICKERS_DRAWER -> {
+                                        GboardEmojiStickerDrawer(
+                                            iconPackType = iconPackType,
+                                            theme = currentTheme,
+                                            onEmojiSelected = { emoji ->
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                currentInputConnection?.commitText(emoji, 1)
+                                            },
+                                            onBackspace = {
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                handleBackspace()
+                                            },
+                                            onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
+                                        )
+                                    }
+                                    else -> {
+                                        GboardQwertyView(
+                                            iconPackType = iconPackType,
+                                            theme = currentTheme,
+                                            isShiftActive = isShiftActive,
+                                            isCapsLock = isCapsLock,
+                                            keyHeight = keyHeight,
+                                            onKeyPressed = { key ->
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                currentInputConnection?.commitText(key, 1)
+                                            },
+                                            onBackspace = {
+                                                handleBackspace()
+                                            },
+                                            onSendOrEnter = {
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                                            },
+                                            onToggleShift = { isShiftActive = !isShiftActive },
+                                            onSwitchMode = { currentMode = it },
+                                            onScrubCursor = handleScrubCursor
+                                        )
+                                    }
                                 }
-                                KeyboardMode.SYMBOLS_123, KeyboardMode.SYMBOLS_ALT -> {
-                                    GboardSymbolsView(
-                                        isAltSymbols = isAltSymbols,
-                                        iconPackType = iconPackType,
-                                        theme = currentTheme,
-                                        keyHeight = keyHeight,
-                                        onKeyPressed = { key ->
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            currentInputConnection?.commitText(key, 1)
-                                        },
-                                        onBackspace = {
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            handleBackspace()
-                                        },
-                                        onSendOrEnter = {
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-                                        },
-                                        onToggleAltSymbols = { isAltSymbols = !isAltSymbols },
-                                        onSwitchMode = { currentMode = it },
-                                        onScrubCursor = { delta ->
-                                            val ic = currentInputConnection ?: return@GboardSymbolsView
-                                            if (delta > 0) {
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT))
-                                            } else if (delta < 0) {
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
-                                            }
-                                            audioEngine.triggerCursorTick()
-                                        }
-                                    )
-                                }
-                                KeyboardMode.EMOJI_DRAWER, KeyboardMode.STICKERS_DRAWER -> {
-                                    GboardEmojiStickerDrawer(
-                                        iconPackType = iconPackType,
-                                        theme = currentTheme,
-                                        onEmojiSelected = { emoji ->
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            currentInputConnection?.commitText(emoji, 1)
-                                        },
-                                        onBackspace = {
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            handleBackspace()
-                                        },
-                                        onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
-                                    )
-                                }
-                                else -> {
-                                    GboardQwertyView(
-                                        iconPackType = iconPackType,
-                                        theme = currentTheme,
-                                        isShiftActive = isShiftActive,
-                                        isCapsLock = isCapsLock,
-                                        keyHeight = keyHeight,
-                                        onKeyPressed = { key ->
-                                            audioEngine.playKeyPressSound(currentSwitch)
-                                            currentInputConnection?.commitText(key, 1)
-                                        },
-                                        onBackspace = {
-                                            handleBackspace()
-                                        },
-                                        onSendOrEnter = {
-                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-                                        },
-                                        onToggleShift = { isShiftActive = !isShiftActive },
-                                        onSwitchMode = { currentMode = it },
-                                        onScrubCursor = { delta ->
-                                            val ic = currentInputConnection ?: return@GboardQwertyView
-                                            if (delta > 0) {
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT))
-                                            } else if (delta < 0) {
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
-                                                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
-                                            }
-                                            audioEngine.triggerCursorTick()
-                                        }
-                                    )
-                                }
+                            }
+
+                            if (layoutMode == KeyboardLayoutMode.ONE_HANDED_LEFT) {
+                                OneHandedDock(
+                                    isLeftDock = false,
+                                    theme = currentTheme,
+                                    iconPackType = iconPackType,
+                                    onSwitchSide = { layoutMode = KeyboardLayoutMode.ONE_HANDED_RIGHT },
+                                    onExpandFullWidth = { layoutMode = KeyboardLayoutMode.FULL_WIDTH },
+                                    onOpenSettings = { showSettingsDialog = true }
+                                )
                             }
                         }
 
@@ -381,6 +434,8 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                 isAutocorrectOn = isAutocorrectOn,
                                 isImeEnabled = true,
                                 isImeSelected = true,
+                                currentLayoutMode = layoutMode,
+                                onSelectLayoutMode = { layoutMode = it },
                                 onUpdateKeyHeight = { keyHeight = it },
                                 onSelectSwitch = { currentSwitch = it },
                                 onSelectTheme = { currentTheme = it },

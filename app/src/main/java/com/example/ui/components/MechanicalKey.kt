@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -110,14 +111,15 @@ fun RowScope.MechanicalKey(
                     isPressed = true
 
                     if (onHorizontalDrag != null) {
-                        // Spacebar: Track whether it's a tap or a hold/swipe for cursor scrubbing
+                        // Spacebar: Long press or swipe horizontally to scrub cursor
                         var isScrubbing = false
                         var accumulatedDelta = 0f
                         var lastX = down.position.x
                         val startTime = System.currentTimeMillis()
+                        var totalMovedChars = 0
 
                         while (true) {
-                            val event = awaitPointerEvent()
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
                             val change = event.changes.firstOrNull() ?: break
                             if (!change.pressed) break
 
@@ -126,29 +128,29 @@ fun RowScope.MechanicalKey(
                             accumulatedDelta += dx
 
                             val elapsed = System.currentTimeMillis() - startTime
-                            if (!isScrubbing && (elapsed >= 180L || kotlin.math.abs(accumulatedDelta) >= 8f)) {
+                            if (!isScrubbing && (elapsed >= 150L || kotlin.math.abs(accumulatedDelta) >= 8f)) {
                                 isScrubbing = true
                                 isScrubbingActive = true
-                                change.consume()
                             }
 
                             if (isScrubbing) {
                                 change.consume()
-                                // Step threshold: 12px per character cursor jump
                                 val stepThreshold = 12f
                                 while (accumulatedDelta >= stepThreshold) {
                                     currentOnHorizontalDrag?.invoke(stepThreshold)
                                     accumulatedDelta -= stepThreshold
+                                    totalMovedChars++
                                 }
                                 while (accumulatedDelta <= -stepThreshold) {
                                     currentOnHorizontalDrag?.invoke(-stepThreshold)
                                     accumulatedDelta += stepThreshold
+                                    totalMovedChars++
                                 }
                             }
                         }
 
-                        if (!isScrubbing) {
-                            // Quick tap without holding/swiping -> insert space
+                        // If the user tapped or released without scrubbing cursor characters, trigger normal space
+                        if (totalMovedChars == 0 && kotlin.math.abs(accumulatedDelta) < 12f) {
                             currentOnKeyTriggered()
                         }
                         isScrubbingActive = false

@@ -72,7 +72,11 @@ enum class AppIconGlyph {
     CHEVRON_DOWN,
     ENTER_ARROW,
     TEXT_EDIT,
-    ONE_HANDED
+    ONE_HANDED,
+    EXPAND,
+    ARROW_LEFT,
+    ARROW_RIGHT,
+    WHATSAPP
 }
 
 @Composable
@@ -350,6 +354,10 @@ private fun WhatsAppIcon(
         AppIconGlyph.ENTER_ARROW -> Icons.AutoMirrored.Filled.KeyboardReturn
         AppIconGlyph.TEXT_EDIT -> Icons.Default.EditNote
         AppIconGlyph.ONE_HANDED -> Icons.Default.Dock
+        AppIconGlyph.EXPAND -> Icons.Default.Fullscreen
+        AppIconGlyph.ARROW_LEFT -> Icons.AutoMirrored.Filled.ArrowBack
+        AppIconGlyph.ARROW_RIGHT -> Icons.AutoMirrored.Filled.ArrowForward
+        AppIconGlyph.WHATSAPP -> Icons.Default.Chat
     }
 
     Icon(
@@ -417,6 +425,10 @@ private fun Android17Icon(
         AppIconGlyph.ENTER_ARROW -> Icons.AutoMirrored.Filled.KeyboardReturn
         AppIconGlyph.TEXT_EDIT -> Icons.Default.EditNote
         AppIconGlyph.ONE_HANDED -> Icons.Default.Smartphone
+        AppIconGlyph.EXPAND -> Icons.Default.Fullscreen
+        AppIconGlyph.ARROW_LEFT -> Icons.AutoMirrored.Filled.ArrowBack
+        AppIconGlyph.ARROW_RIGHT -> Icons.AutoMirrored.Filled.ArrowForward
+        AppIconGlyph.WHATSAPP -> Icons.Default.Chat
     }
 
     Icon(
@@ -484,6 +496,10 @@ private fun IosSfIcon(
         AppIconGlyph.ENTER_ARROW -> Icons.AutoMirrored.Filled.KeyboardReturn
         AppIconGlyph.TEXT_EDIT -> Icons.Default.Edit
         AppIconGlyph.ONE_HANDED -> Icons.Default.Devices
+        AppIconGlyph.EXPAND -> Icons.Default.Fullscreen
+        AppIconGlyph.ARROW_LEFT -> Icons.AutoMirrored.Filled.ArrowBack
+        AppIconGlyph.ARROW_RIGHT -> Icons.AutoMirrored.Filled.ArrowForward
+        AppIconGlyph.WHATSAPP -> Icons.Default.Chat
     }
 
     Icon(

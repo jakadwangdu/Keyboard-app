@@ -147,27 +147,36 @@ fun MainKeyboardScreen(
             )
 
             // 3. Layout Mode Wrapper (Full / One-Handed Left / One-Handed Right / Floating)
-            val keyboardAlignment = when (layoutMode) {
-                KeyboardLayoutMode.ONE_HANDED_LEFT -> Alignment.BottomStart
-                KeyboardLayoutMode.ONE_HANDED_RIGHT -> Alignment.BottomEnd
-                else -> Alignment.BottomCenter
-            }
-            val keyboardWidthFraction = when (layoutMode) {
-                KeyboardLayoutMode.ONE_HANDED_LEFT, KeyboardLayoutMode.ONE_HANDED_RIGHT -> 0.85f
-                KeyboardLayoutMode.FLOATING -> 0.90f
-                KeyboardLayoutMode.FULL_WIDTH -> 1.0f
-            }
-
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(theme.backgroundHex)),
-                contentAlignment = keyboardAlignment
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Bottom
             ) {
+                // One-Handed Left Dock (when keyboard is shifted to the right)
+                if (layoutMode == KeyboardLayoutMode.ONE_HANDED_RIGHT) {
+                    OneHandedDock(
+                        isLeftDock = true,
+                        theme = theme,
+                        iconPackType = iconPackType,
+                        onSwitchSide = { viewModel.setLayoutMode(KeyboardLayoutMode.ONE_HANDED_LEFT) },
+                        onExpandFullWidth = { viewModel.setLayoutMode(KeyboardLayoutMode.FULL_WIDTH) },
+                        onOpenSettings = { viewModel.setShowSettingsDialog(true) }
+                    )
+                }
+
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth(keyboardWidthFraction)
-                        .padding(if (layoutMode == KeyboardLayoutMode.FLOATING) 8.dp else 0.dp),
+                        .then(
+                            if (layoutMode == KeyboardLayoutMode.ONE_HANDED_LEFT || layoutMode == KeyboardLayoutMode.ONE_HANDED_RIGHT) {
+                                Modifier.weight(1f)
+                            } else if (layoutMode == KeyboardLayoutMode.FLOATING) {
+                                Modifier.fillMaxWidth(0.92f).padding(8.dp)
+                            } else {
+                                Modifier.fillMaxWidth()
+                            }
+                        ),
                     shape = if (layoutMode == KeyboardLayoutMode.FLOATING) RoundedCornerShape(16.dp) else RoundedCornerShape(0.dp),
                     color = Color(theme.backgroundHex),
                     shadowElevation = if (layoutMode == KeyboardLayoutMode.FLOATING) 8.dp else 0.dp
@@ -276,6 +285,18 @@ fun MainKeyboardScreen(
                         }
                     }
                 }
+
+                // One-Handed Right Dock (when keyboard is shifted to the left)
+                if (layoutMode == KeyboardLayoutMode.ONE_HANDED_LEFT) {
+                    OneHandedDock(
+                        isLeftDock = false,
+                        theme = theme,
+                        iconPackType = iconPackType,
+                        onSwitchSide = { viewModel.setLayoutMode(KeyboardLayoutMode.ONE_HANDED_RIGHT) },
+                        onExpandFullWidth = { viewModel.setLayoutMode(KeyboardLayoutMode.FULL_WIDTH) },
+                        onOpenSettings = { viewModel.setShowSettingsDialog(true) }
+                    )
+                }
             }
         }
 
@@ -304,6 +325,8 @@ fun MainKeyboardScreen(
                 onUpdateVolume = { viewModel.setSoundVolume(it) },
                 onUpdateHapticStrength = { viewModel.setHapticStrength(it) },
                 onOpenDefaultKeyboardSetup = { showDefaultKeyboardDialog = true },
+                currentLayoutMode = layoutMode,
+                onSelectLayoutMode = { viewModel.setLayoutMode(it) },
                 onSaveAsDefaultPreset = { viewModel.saveCurrentPresetAsDefault() },
                 onDismiss = { viewModel.setShowSettingsDialog(false) }
             )

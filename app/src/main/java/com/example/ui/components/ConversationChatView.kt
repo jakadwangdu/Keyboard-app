@@ -18,7 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -304,6 +306,8 @@ fun ConversationChatView(
                     }
 
                     // Live typing text viewport (Supports soft keyboard IME, physical typing, and mechanical keys)
+                    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.CenterStart
@@ -317,6 +321,7 @@ fun ConversationChatView(
                                 }
                                 onCursorPositionChange?.invoke(newValue.selection.end)
                             },
+                            onTextLayout = { textLayoutResult = it },
                             textStyle = TextStyle(
                                 fontSize = 15.sp,
                                 fontWeight = if (isRetro95) FontWeight.Medium else FontWeight.Normal,
@@ -331,15 +336,37 @@ fun ConversationChatView(
                                 .fillMaxWidth()
                                 .testTag("chat_input_text_field"),
                             decorationBox = { innerTextField ->
-                                if (activeText.isEmpty()) {
-                                    Text(
-                                        text = "Type a message...",
-                                        fontSize = 14.sp,
-                                        color = if (isRetro95) Color(0xFF707070) else textColor.copy(alpha = 0.45f),
-                                        fontFamily = if (isRetro95) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default
-                                    )
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (activeText.isEmpty()) {
+                                        Text(
+                                            text = "Type a message...",
+                                            fontSize = 14.sp,
+                                            color = if (isRetro95) Color(0xFF707070) else textColor.copy(alpha = 0.45f),
+                                            fontFamily = if (isRetro95) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default
+                                        )
+                                    }
+                                    innerTextField()
+
+                                    // Precision Cursor Bar: Always visibly renders at the scrubbed cursor position
+                                    val safePos = cursorPosition.coerceIn(0, activeText.length)
+                                    val cursorRect = textLayoutResult?.getCursorRect(safePos)
+                                    if (cursorRect != null && (activeText.isNotEmpty() || cursorPosition > 0)) {
+                                        val density = LocalDensity.current
+                                        Box(
+                                            modifier = Modifier
+                                                .offset(
+                                                    x = with(density) { cursorRect.left.toDp() },
+                                                    y = with(density) { cursorRect.top.toDp() }
+                                                )
+                                                .width(2.5.dp)
+                                                .height(with(density) { cursorRect.height.toDp() })
+                                                .background(if (isRetro95) Color.Black else accentColor)
+                                        )
+                                    }
                                 }
-                                innerTextField()
                             }
                         )
                     }

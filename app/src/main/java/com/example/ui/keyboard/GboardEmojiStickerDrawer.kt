@@ -197,6 +197,24 @@ fun GboardEmojiStickerDrawer(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Meta WhatsApp New Emojis Tab
+                val isMetaWa = selectedCategoryId == "meta_whatsapp"
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isMetaWa) Color(0xFF25D366) else Color(0x3325D366),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { selectedCategoryId = "meta_whatsapp"; searchQuery = "" }
+                ) {
+                    Text(
+                        text = "💬 Meta WhatsApp New",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isMetaWa) Color.White else Color(0xFF25D366),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
                 // Unicode 18.0 Tag
                 val isU18 = selectedCategoryId == "unicode18"
                 Surface(
@@ -252,7 +270,7 @@ fun GboardEmojiStickerDrawer(
                 }
 
                 // Database categories
-                EmojiDatabase.allCategories.filter { it.id != "unicode18" }.forEach { category ->
+                EmojiDatabase.allCategories.filter { it.id != "unicode18" && it.id != "meta_whatsapp" }.forEach { category ->
                     val isSelected = selectedCategoryId == category.id
                     Surface(
                         shape = RoundedCornerShape(10.dp),
