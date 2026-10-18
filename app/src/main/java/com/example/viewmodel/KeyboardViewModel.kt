@@ -12,6 +12,10 @@ import com.example.audio.MechanicalAudioEngine
 import com.example.engine.AutocorrectEngine
 import com.example.engine.CorrectionCandidate
 import com.example.model.*
+import com.example.ui.theme.AccentColor
+import com.example.ui.theme.BackgroundTheme
+import com.example.ui.theme.KeySizeOption
+import com.example.ui.theme.KeymoldThemeTokens
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,10 +39,28 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _iconPackType = MutableStateFlow(IconPackType.WHATSAPP_EXPRESSIVE)
     val iconPackType: StateFlow<IconPackType> = _iconPackType.asStateFlow()
 
-    private val _keyboardTheme = MutableStateFlow(KeyboardThemeType.MINIMAL_DARK)
+    private val _keyboardTheme = MutableStateFlow(KeyboardThemeType.AMOLED_BLACK)
     val keyboardTheme: StateFlow<KeyboardThemeType> = _keyboardTheme.asStateFlow()
 
-    private val _keyHeight = MutableStateFlow(50.dp)
+    private val _backgroundTheme = MutableStateFlow(BackgroundTheme.AMOLED)
+    val backgroundTheme: StateFlow<BackgroundTheme> = _backgroundTheme.asStateFlow()
+
+    private val _accentColor = MutableStateFlow(AccentColor.AMBER)
+    val accentColor: StateFlow<AccentColor> = _accentColor.asStateFlow()
+
+    private val _keySizeOption = MutableStateFlow(KeySizeOption.FITTED)
+    val keySizeOption: StateFlow<KeySizeOption> = _keySizeOption.asStateFlow()
+
+    private val _keymoldTokens = MutableStateFlow(
+        KeymoldThemeTokens(
+            backgroundTheme = BackgroundTheme.AMOLED,
+            accentColor = AccentColor.AMBER,
+            keySizeOption = KeySizeOption.FITTED
+        )
+    )
+    val keymoldTokens: StateFlow<KeymoldThemeTokens> = _keymoldTokens.asStateFlow()
+
+    private val _keyHeight = MutableStateFlow(54.dp)
     val keyHeight: StateFlow<Dp> = _keyHeight.asStateFlow()
 
     private val _showSettingsDialog = MutableStateFlow(false)
@@ -169,6 +191,20 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
             val savedLayoutName = prefs.getString("default_layout_mode", KeyboardLayoutMode.FULL_WIDTH.name)
             val savedLayout = KeyboardLayoutMode.entries.find { it.name == savedLayoutName } ?: KeyboardLayoutMode.FULL_WIDTH
             _layoutMode.value = savedLayout
+
+            val savedBgName = prefs.getString("default_bg_theme", BackgroundTheme.AMOLED.name)
+            val savedBg = BackgroundTheme.entries.find { it.name == savedBgName } ?: BackgroundTheme.AMOLED
+            _backgroundTheme.value = savedBg
+
+            val savedAccentName = prefs.getString("default_accent_color", AccentColor.AMBER.name)
+            val savedAccent = AccentColor.entries.find { it.name == savedAccentName } ?: AccentColor.AMBER
+            _accentColor.value = savedAccent
+
+            val savedKeySizeName = prefs.getString("default_key_size", KeySizeOption.FITTED.name)
+            val savedKeySize = KeySizeOption.entries.find { it.name == savedKeySizeName } ?: KeySizeOption.FITTED
+            _keySizeOption.value = savedKeySize
+
+            updateKeymoldTokens()
         } catch (_: Exception) {
         }
 
@@ -235,6 +271,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
                 .putBoolean("default_glide_enabled", _isGlideTypingOn.value)
                 .putBoolean("default_autocorrect_enabled", _isAutocorrectOn.value)
                 .putString("default_layout_mode", _layoutMode.value.name)
+                .putString("default_bg_theme", _backgroundTheme.value.name)
+                .putString("default_accent_color", _accentColor.value.name)
+                .putString("default_key_size", _keySizeOption.value.name)
                 .apply()
 
             audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.35f)
@@ -331,6 +370,8 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         _cursorPosition.value = pos.coerceIn(0, _activeText.value.length)
     }
 
+    private val autocorrectCache = java.util.concurrent.ConcurrentHashMap<String, List<CorrectionCandidate>>()
+
     private fun updateSuggestions(text: String, cursorPos: Int = text.length) {
         suggestionJob?.cancel()
         if (text.isBlank()) {
@@ -342,14 +383,21 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         suggestionJob = viewModelScope.launch(Dispatchers.Default) {
             val safePos = cursorPos.coerceIn(0, text.length)
             val beforeCursor = text.substring(0, safePos)
-            val lastWord = beforeCursor.split(" ").lastOrNull() ?: ""
+            val lastWord = beforeCursor.split(" ").lastOrNull()?.trim() ?: ""
             if (lastWord.isBlank()) {
                 _suggestions.value = listOf("the", "you", "thanks", "sounds great", "let's go")
                 _candidates.value = emptyList()
                 return@launch
             }
 
-            val rawCandidates = AutocorrectEngine.getCorrections(lastWord)
+            val cached = autocorrectCache[lastWord.lowercase()]
+            val rawCandidates = cached ?: run {
+                val computed = AutocorrectEngine.getCorrections(lastWord)
+                if (autocorrectCache.size > 200) autocorrectCache.clear()
+                autocorrectCache[lastWord.lowercase()] = computed
+                computed
+            }
+
             val candidatesList = if (_isAutocorrectOn.value) {
                 rawCandidates
             } else {
@@ -510,7 +558,48 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     fun setTheme(theme: KeyboardThemeType) {
         _keyboardTheme.value = theme
+        // If it's one of the Keymold core themes, update the token as well
+        when (theme) {
+            KeyboardThemeType.AMOLED_BLACK -> _backgroundTheme.value = BackgroundTheme.AMOLED
+            KeyboardThemeType.KEYMOLD_DIM -> _backgroundTheme.value = BackgroundTheme.DIM
+            KeyboardThemeType.KEYMOLD_LIGHT -> _backgroundTheme.value = BackgroundTheme.LIGHT
+            else -> {}
+        }
+        updateKeymoldTokens()
         audioEngine.playKeyPressSound(_currentSwitch.value)
+    }
+
+    fun setBackgroundTheme(bg: BackgroundTheme) {
+        _backgroundTheme.value = bg
+        updateKeymoldTokens()
+        audioEngine.playKeyPressSound(_currentSwitch.value)
+    }
+
+    fun setAccentColor(accent: AccentColor) {
+        _accentColor.value = accent
+        updateKeymoldTokens()
+        audioEngine.playKeyPressSound(_currentSwitch.value)
+    }
+
+    fun setKeySizeOption(option: KeySizeOption) {
+        _keySizeOption.value = option
+        updateKeymoldTokens()
+        audioEngine.playKeyPressSound(_currentSwitch.value)
+    }
+
+    private fun updateKeymoldTokens() {
+        val tokens = KeymoldThemeTokens(
+            backgroundTheme = _backgroundTheme.value,
+            accentColor = _accentColor.value,
+            keySizeOption = _keySizeOption.value
+        )
+        _keymoldTokens.value = tokens
+        _keyHeight.value = tokens.keyHeight
+        _keyboardTheme.value = when (_backgroundTheme.value) {
+            BackgroundTheme.AMOLED -> KeyboardThemeType.AMOLED_BLACK
+            BackgroundTheme.DIM -> KeyboardThemeType.KEYMOLD_DIM
+            BackgroundTheme.LIGHT -> KeyboardThemeType.KEYMOLD_LIGHT
+        }
     }
 
     fun setSwitch(switch: SwitchType) {
@@ -569,14 +658,12 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleVoiceTyping() {
-        val next = !_isVoiceTyping.value
-        _isVoiceTyping.value = next
-        if (next) {
-            viewModelScope.launch {
-                delay(1500)
-                typeKey("Hello from voice dictation! ")
-                _isVoiceTyping.value = false
-            }
+        if (_keyboardMode.value == KeyboardMode.VOICE_TYPING) {
+            _keyboardMode.value = KeyboardMode.QWERTY
+            _isVoiceTyping.value = false
+        } else {
+            _keyboardMode.value = KeyboardMode.VOICE_TYPING
+            _isVoiceTyping.value = true
         }
     }
 
@@ -594,7 +681,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
                     val current = _clipboardHistory.value.toMutableList()
                     current.removeAll { it.text == clipText }
                     current.add(0, ClipboardItem(text = clipText))
-                    _clipboardHistory.value = current.take(20)
+                    _clipboardHistory.value = current.take(30)
                 }
             }
         } catch (_: Exception) {

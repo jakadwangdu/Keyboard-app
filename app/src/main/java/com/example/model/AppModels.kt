@@ -154,17 +154,45 @@ enum class KeyboardThemeType(
         isBorderless = false
     ),
     AMOLED_BLACK(
-        displayName = "AMOLED Pitch Dark",
+        displayName = "Keymold AMOLED (Default)",
         backgroundHex = 0xFF000000,
-        surfaceHex = 0xFF101216,
-        keyCapHex = 0xFF1A1F26,
-        keyCapAltHex = 0xFF242B35,
-        keyTextHex = 0xFFFFFFFF,
-        accentHex = 0xFF00E676,
+        surfaceHex = 0xFF000000,
+        keyCapHex = 0xFF161616,
+        keyCapAltHex = 0xFF262626,
+        keyTextHex = 0xFFF5F5F5,
+        accentHex = 0xFFF0A93B,
         chatBackgroundHex = 0xFF000000,
-        userBubbleHex = 0xFF005C4B,
-        contactBubbleHex = 0xFF1A1F26,
+        userBubbleHex = 0xFFF0A93B,
+        contactBubbleHex = 0xFF262626,
         isDark = true,
+        isBorderless = false
+    ),
+    KEYMOLD_DIM(
+        displayName = "Keymold Dim",
+        backgroundHex = 0xFF0B0A09,
+        surfaceHex = 0xFF141210,
+        keyCapHex = 0xFF2B2825,
+        keyCapAltHex = 0xFF201E1B,
+        keyTextHex = 0xFFF3EDE4,
+        accentHex = 0xFFF0A93B,
+        chatBackgroundHex = 0xFF0B0A09,
+        userBubbleHex = 0xFFF0A93B,
+        contactBubbleHex = 0xFF201E1B,
+        isDark = true,
+        isBorderless = false
+    ),
+    KEYMOLD_LIGHT(
+        displayName = "Keymold Light",
+        backgroundHex = 0xFFE9E5DE,
+        surfaceHex = 0xFFFAF8F4,
+        keyCapHex = 0xFFFFFFFF,
+        keyCapAltHex = 0xFFCFCAC1,
+        keyTextHex = 0xFF1D1A16,
+        accentHex = 0xFFF0A93B,
+        chatBackgroundHex = 0xFFE9E5DE,
+        userBubbleHex = 0xFFF0A93B,
+        contactBubbleHex = 0xFFCFCAC1,
+        isDark = false,
         isBorderless = false
     ),
     WHATSAPP_DARK(
@@ -275,9 +303,11 @@ enum class KeyboardMode {
     SYMBOLS_123,
     SYMBOLS_ALT,
     EMOJI_DRAWER,
+    EMOJI_SEARCH,
+    CLIPBOARD_DRAWER,
+    VOICE_TYPING,
     STICKERS_DRAWER,
     ATTACHMENTS_SHEET,
-    CLIPBOARD_DRAWER,
     TEXT_EDITING,
     TRANSLATE
 }
@@ -342,12 +372,15 @@ data class ChatMessage(
     val status: MessageStatus = MessageStatus.READ,
     val attachmentType: AttachmentType = AttachmentType.NONE,
     val attachmentData: String? = null,
+    val attachmentImageUri: String? = null,
     val reactions: List<String> = emptyList()
 )
 
 data class ClipboardItem(
     val id: Long = System.currentTimeMillis(),
-    val text: String,
+    val text: String = "",
+    val isImage: Boolean = false,
+    val imageUri: String? = null,
     val isPinned: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )

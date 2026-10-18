@@ -13,13 +13,22 @@ import com.example.model.IconPackType
 import com.example.model.KeyboardMode
 import com.example.model.KeyboardThemeType
 import com.example.ui.components.MechanicalKey
+import com.example.ui.theme.KeymoldThemeTokens
 
+/**
+ * Keymold Symbols Mode.
+ * - Row 1: 1 2 3 4 5 6 7 8 9 0
+ * - Row 2: @ # $ % & - + ( ) /
+ * - Row 3: =< | * " ' : ; ! ? | Backspace
+ * - Row 4: ABC | Emoji | Space (5x) | . | Enter (1.45x in accent)
+ */
 @Composable
 fun GboardSymbolsView(
     isAltSymbols: Boolean,
     iconPackType: IconPackType,
     theme: KeyboardThemeType,
-    keyHeight: Dp = 50.dp,
+    tokens: KeymoldThemeTokens = KeymoldThemeTokens(),
+    keyHeight: Dp = tokens.keyHeight,
     onKeyPressed: (String) -> Unit,
     onBackspace: () -> Unit,
     onSendOrEnter: () -> Unit,
@@ -34,7 +43,7 @@ fun GboardSymbolsView(
     }
 
     val row2 = if (!isAltSymbols) {
-        listOf("@", "#", "$", "_", "&", "-", "+", "(", ")", "/")
+        listOf("@", "#", "$", "%", "&", "-", "+", "(", ")", "/")
     } else {
         listOf("£", "€", "¥", "¢", "^", "°", "=", "{", "}", "\\")
     }
@@ -42,18 +51,18 @@ fun GboardSymbolsView(
     val row3 = if (!isAltSymbols) {
         listOf("*", "\"", "'", ":", ";", "!", "?")
     } else {
-        listOf("%", "©", "®", "™", "✓", "[", "]")
+        listOf("_", "©", "®", "™", "✓", "[", "]")
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(theme.backgroundHex))
-            .padding(horizontal = 3.dp, vertical = 5.dp)
+            .background(tokens.keyboard)
+            .padding(start = 6.dp, end = 6.dp, bottom = 10.dp, top = 2.dp)
             .testTag("gboard_symbols_layout"),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        // Row 1: Numbers or Math/Alt symbols
+        // Row 1: 1 2 3 4 5 6 7 8 9 0
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
@@ -63,6 +72,7 @@ fun GboardSymbolsView(
                     primaryText = key,
                     iconPackType = iconPackType,
                     theme = theme,
+                    tokens = tokens,
                     weight = 1f,
                     height = keyHeight,
                     onKeyTriggered = { onKeyPressed(key) }
@@ -70,7 +80,7 @@ fun GboardSymbolsView(
             }
         }
 
-        // Row 2: Standard or Currency/Brackets symbols
+        // Row 2: @ # $ % & - + ( ) /
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
@@ -80,6 +90,7 @@ fun GboardSymbolsView(
                     primaryText = key,
                     iconPackType = iconPackType,
                     theme = theme,
+                    tokens = tokens,
                     weight = 1f,
                     height = keyHeight,
                     onKeyTriggered = { onKeyPressed(key) }
@@ -87,7 +98,7 @@ fun GboardSymbolsView(
             }
         }
 
-        // Row 3: [=\< or ?123] [Symbols...] [BACKSPACE]
+        // Row 3: =< (1.45x) | * " ' : ; ! ? | Backspace (1.45x)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
@@ -96,6 +107,7 @@ fun GboardSymbolsView(
                 primaryText = if (!isAltSymbols) "=\\<" else "?123",
                 iconPackType = iconPackType,
                 theme = theme,
+                tokens = tokens,
                 isAlt = true,
                 isAccent = isAltSymbols,
                 weight = 1.45f,
@@ -108,6 +120,7 @@ fun GboardSymbolsView(
                     primaryText = key,
                     iconPackType = iconPackType,
                     theme = theme,
+                    tokens = tokens,
                     weight = 1f,
                     height = keyHeight,
                     onKeyTriggered = { onKeyPressed(key) }
@@ -118,6 +131,7 @@ fun GboardSymbolsView(
                 iconGlyph = AppIconGlyph.BACKSPACE,
                 iconPackType = iconPackType,
                 theme = theme,
+                tokens = tokens,
                 isAlt = true,
                 weight = 1.45f,
                 height = keyHeight,
@@ -126,7 +140,7 @@ fun GboardSymbolsView(
             )
         }
 
-        // Row 4: [ABC] [,] [EMOJI] [SPACEBAR] [.] [SEND/ENTER]
+        // Row 4: ABC (1.45x) | Emoji (1.0x) | Space (5.0x) | . (1.0x) | Enter (1.45x in accent)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
@@ -135,25 +149,18 @@ fun GboardSymbolsView(
                 primaryText = "ABC",
                 iconPackType = iconPackType,
                 theme = theme,
+                tokens = tokens,
                 isAlt = true,
-                weight = 1.35f,
+                weight = 1.45f,
                 height = keyHeight,
                 onKeyTriggered = { onSwitchMode(KeyboardMode.QWERTY) }
-            )
-
-            MechanicalKey(
-                primaryText = "<",
-                iconPackType = iconPackType,
-                theme = theme,
-                weight = 0.9f,
-                height = keyHeight,
-                onKeyTriggered = { onKeyPressed("<") }
             )
 
             MechanicalKey(
                 iconGlyph = AppIconGlyph.EMOJI,
                 iconPackType = iconPackType,
                 theme = theme,
+                tokens = tokens,
                 isAlt = true,
                 weight = 1.0f,
                 height = keyHeight,
@@ -161,10 +168,10 @@ fun GboardSymbolsView(
             )
 
             MechanicalKey(
-                primaryText = "English (US)",
                 iconPackType = iconPackType,
                 theme = theme,
-                weight = 3.6f,
+                tokens = tokens,
+                weight = 5.0f,
                 height = keyHeight,
                 testTagId = "key_symbols_spacebar",
                 onKeyTriggered = { onKeyPressed(" ") },
@@ -174,18 +181,20 @@ fun GboardSymbolsView(
             )
 
             MechanicalKey(
-                primaryText = ">",
+                primaryText = ".",
                 iconPackType = iconPackType,
                 theme = theme,
-                weight = 0.9f,
+                tokens = tokens,
+                weight = 1.0f,
                 height = keyHeight,
-                onKeyTriggered = { onKeyPressed(">") }
+                onKeyTriggered = { onKeyPressed(".") }
             )
 
             MechanicalKey(
-                iconGlyph = AppIconGlyph.SEND,
+                iconGlyph = AppIconGlyph.ENTER_ARROW,
                 iconPackType = iconPackType,
                 theme = theme,
+                tokens = tokens,
                 isAccent = true,
                 weight = 1.45f,
                 height = keyHeight,

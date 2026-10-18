@@ -19,15 +19,25 @@ import com.example.model.IconPackType
 import com.example.model.KeyboardMode
 import com.example.model.KeyboardThemeType
 import com.example.ui.components.MechanicalKey
+import com.example.ui.theme.KeymoldThemeTokens
 
+/**
+ * Keymold Letters Mode (QWERTY layout).
+ * - Row 1: q w e r t y u i o p
+ * - Row 2: a s d f g h j k l, with 5% side padding
+ * - Row 3: Shift (1.45x) | z x c v b n m | Backspace (1.45x)
+ * - Row 4: ?123 | Emoji | Space (5x width, label "Keymold", muted 12px) | . | Enter (1.45x in accent)
+ * - Gap between keys 6px, 8px vertically, padding 6px sides, 10px bottom.
+ */
 @Composable
 fun GboardQwertyView(
     iconPackType: IconPackType,
     theme: KeyboardThemeType,
     isShiftActive: Boolean,
     isCapsLock: Boolean,
+    tokens: KeymoldThemeTokens = KeymoldThemeTokens(),
     glideTypingEnabled: Boolean = false,
-    keyHeight: Dp = 50.dp,
+    keyHeight: Dp = tokens.keyHeight,
     onKeyPressed: (String) -> Unit,
     onBackspace: () -> Unit,
     onSendOrEnter: () -> Unit,
@@ -36,106 +46,33 @@ fun GboardQwertyView(
     onScrubCursor: (Int) -> Unit = {},
     onGlideWordCommitted: (String) -> Unit = {}
 ) {
-    val row1 = listOf(
-        Pair("q", "1"), Pair("w", "2"), Pair("e", "3"), Pair("r", "4"),
-        Pair("t", "5"), Pair("y", "6"), Pair("u", "7"), Pair("i", "8"),
-        Pair("o", "9"), Pair("p", "0")
-    )
-
-    val row2 = listOf(
-        Pair("a", "@"), Pair("s", "#"), Pair("d", "$"), Pair("f", "_"),
-        Pair("g", "&"), Pair("h", "-"), Pair("j", "+"), Pair("k", "("),
-        Pair("l", ")")
-    )
-
-    val row3 = listOf(
-        Pair("z", "*"), Pair("x", "\""), Pair("c", "'"), Pair("v", ":"),
-        Pair("b", ";"), Pair("n", "!"), Pair("m", "?")
-    )
-
-    var layoutSize by remember { mutableStateOf(IntSize.Zero) }
-    var trailPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
-    var normalizedPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
-    var isGlideGestureActive by remember { mutableStateOf(false) }
+    val row1 = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
+    val row2 = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l")
+    val row3 = listOf("z", "x", "c", "v", "b", "n", "m")
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { layoutSize = it.size }
-            .then(
-                if (glideTypingEnabled) {
-                    Modifier.pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragStart = { startOffset ->
-                                // Only trigger glide typing when gesture originates in letter rows (top 72%), never spacebar
-                                if (layoutSize.width > 0 && layoutSize.height > 0 && startOffset.y < layoutSize.height * 0.72f) {
-                                    isGlideGestureActive = true
-                                    trailPoints = listOf(startOffset)
-                                    normalizedPoints = listOf(
-                                        Offset(
-                                            startOffset.x / layoutSize.width.toFloat(),
-                                            startOffset.y / layoutSize.height.toFloat()
-                                        )
-                                    )
-                                } else {
-                                    isGlideGestureActive = false
-                                }
-                            },
-                            onDrag = { change, _ ->
-                                if (isGlideGestureActive && layoutSize.width > 0 && layoutSize.height > 0) {
-                                    val currentPos = change.position
-                                    trailPoints = (trailPoints + currentPos).takeLast(40)
-                                    normalizedPoints = (normalizedPoints + Offset(
-                                        currentPos.x / layoutSize.width.toFloat(),
-                                        currentPos.y / layoutSize.height.toFloat()
-                                    )).takeLast(40)
-                                }
-                            },
-                            onDragEnd = {
-                                if (isGlideGestureActive && normalizedPoints.size >= 3) {
-                                    val candidates = GlideTypingEngine.recognizeGlidePath(normalizedPoints)
-                                    if (candidates.isNotEmpty()) {
-                                        val best = candidates.first().word
-                                        val formatted = if (isShiftActive || isCapsLock) {
-                                            best.replaceFirstChar { it.uppercase() }
-                                        } else best
-                                        onGlideWordCommitted(formatted)
-                                    }
-                                }
-                                isGlideGestureActive = false
-                                trailPoints = emptyList()
-                                normalizedPoints = emptyList()
-                            },
-                            onDragCancel = {
-                                isGlideGestureActive = false
-                                trailPoints = emptyList()
-                                normalizedPoints = emptyList()
-                            }
-                        )
-                    }
-                } else Modifier
-            )
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(theme.backgroundHex))
-                .padding(horizontal = 3.dp, vertical = 5.dp)
+                .background(tokens.keyboard)
+                .padding(start = 6.dp, end = 6.dp, bottom = 10.dp, top = 2.dp)
                 .testTag("gboard_qwerty_layout"),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // Row 1: Q W E R T Y U I O P (with numbers 1-0 secondary)
+            // Row 1: q w e r t y u i o p
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                for ((letter, number) in row1) {
+                for (letter in row1) {
                     val displayLetter = if (isShiftActive || isCapsLock) letter.uppercase() else letter
                     MechanicalKey(
                         primaryText = displayLetter,
-                        secondaryText = number,
                         iconPackType = iconPackType,
                         theme = theme,
+                        tokens = tokens,
                         weight = 1f,
                         height = keyHeight,
                         testTagId = "key_$letter",
@@ -144,20 +81,20 @@ fun GboardQwertyView(
                 }
             }
 
-            // Row 2: A S D F G H J K L (with symbols secondary)
+            // Row 2: a s d f g h j k l (with 5% side padding)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 18.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                for ((letter, symbol) in row2) {
+                for (letter in row2) {
                     val displayLetter = if (isShiftActive || isCapsLock) letter.uppercase() else letter
                     MechanicalKey(
                         primaryText = displayLetter,
-                        secondaryText = symbol,
                         iconPackType = iconPackType,
                         theme = theme,
+                        tokens = tokens,
                         weight = 1f,
                         height = keyHeight,
                         testTagId = "key_$letter",
@@ -166,16 +103,16 @@ fun GboardQwertyView(
                 }
             }
 
-            // Row 3: [SHIFT] Z X C V B N M [BACKSPACE]
+            // Row 3: Shift (1.45x) | z x c v b n m | Backspace (1.45x)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                // Shift / Caps Key
                 MechanicalKey(
                     iconGlyph = AppIconGlyph.SHIFT,
                     iconPackType = iconPackType,
                     theme = theme,
+                    tokens = tokens,
                     isAlt = true,
                     isAccent = isShiftActive || isCapsLock,
                     weight = 1.45f,
@@ -184,13 +121,13 @@ fun GboardQwertyView(
                     onKeyTriggered = onToggleShift
                 )
 
-                for ((letter, symbol) in row3) {
+                for (letter in row3) {
                     val displayLetter = if (isShiftActive || isCapsLock) letter.uppercase() else letter
                     MechanicalKey(
                         primaryText = displayLetter,
-                        secondaryText = symbol,
                         iconPackType = iconPackType,
                         theme = theme,
+                        tokens = tokens,
                         weight = 1f,
                         height = keyHeight,
                         testTagId = "key_$letter",
@@ -198,11 +135,11 @@ fun GboardQwertyView(
                     )
                 }
 
-                // Backspace Key (with continuous hold-to-delete)
                 MechanicalKey(
                     iconGlyph = AppIconGlyph.BACKSPACE,
                     iconPackType = iconPackType,
                     theme = theme,
+                    tokens = tokens,
                     isAlt = true,
                     weight = 1.45f,
                     height = keyHeight,
@@ -212,38 +149,28 @@ fun GboardQwertyView(
                 )
             }
 
-            // Row 4: [?123] [,] [EMOJI] [SPACEBAR] [.] [SEND/ENTER]
+            // Row 4: ?123 | Emoji | Space (5x width, label "Keymold", muted 12px) | . | Enter (1.45x in accent)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                // ?123 Mode Key
                 MechanicalKey(
                     primaryText = "?123",
                     iconPackType = iconPackType,
                     theme = theme,
+                    tokens = tokens,
                     isAlt = true,
-                    weight = 1.35f,
+                    weight = 1.45f,
                     height = keyHeight,
                     testTagId = "key_symbols_mode",
                     onKeyTriggered = { onSwitchMode(KeyboardMode.SYMBOLS_123) }
                 )
 
-                // Comma Key
-                MechanicalKey(
-                    primaryText = ",",
-                    iconPackType = iconPackType,
-                    theme = theme,
-                    weight = 0.9f,
-                    height = keyHeight,
-                    onKeyTriggered = { onKeyPressed(",") }
-                )
-
-                // Emoji / Sticker drawer Key
                 MechanicalKey(
                     iconGlyph = AppIconGlyph.EMOJI,
                     iconPackType = iconPackType,
                     theme = theme,
+                    tokens = tokens,
                     isAlt = true,
                     weight = 1.0f,
                     height = keyHeight,
@@ -251,12 +178,11 @@ fun GboardQwertyView(
                     onKeyTriggered = { onSwitchMode(KeyboardMode.EMOJI_DRAWER) }
                 )
 
-                // Spacebar with Gboard language indicator & Swipe cursor scrub
                 MechanicalKey(
-                    primaryText = "English (US)",
                     iconPackType = iconPackType,
                     theme = theme,
-                    weight = 3.6f,
+                    tokens = tokens,
+                    weight = 5.0f,
                     height = keyHeight,
                     testTagId = "key_spacebar",
                     onKeyTriggered = { onKeyPressed(" ") },
@@ -265,25 +191,23 @@ fun GboardQwertyView(
                     }
                 )
 
-                // Period Key
                 MechanicalKey(
                     primaryText = ".",
                     iconPackType = iconPackType,
                     theme = theme,
-                    weight = 0.9f,
+                    tokens = tokens,
+                    weight = 1.0f,
                     height = keyHeight,
                     onKeyTriggered = { onKeyPressed(".") }
                 )
 
-                // Send / Return Key (WhatsApp green accent or retro return arrow)
-                val isRetro95 = theme == KeyboardThemeType.RETRO_95_PIXEL
+                // One bold element only: the accent-colored Enter key
                 MechanicalKey(
-                    iconGlyph = if (isRetro95) AppIconGlyph.ENTER_ARROW else AppIconGlyph.SEND,
-                    primaryText = if (isRetro95) "↵" else null,
+                    iconGlyph = AppIconGlyph.ENTER_ARROW,
                     iconPackType = iconPackType,
                     theme = theme,
-                    isAccent = !isRetro95,
-                    isAlt = isRetro95,
+                    tokens = tokens,
+                    isAccent = true,
                     weight = 1.45f,
                     height = keyHeight,
                     testTagId = "key_send_return",
@@ -292,12 +216,13 @@ fun GboardQwertyView(
             }
         }
 
-        // Gesture glide trail overlay
-        if (trailPoints.isNotEmpty()) {
-            GboardGlideCanvas(
-                trailPoints = trailPoints,
-                accentColor = Color(theme.accentHex)
-            )
-        }
+        // Isolated gesture glide overlay: draws smooth trail with zero key recomposition
+        GboardGlideOverlay(
+            enabled = glideTypingEnabled,
+            accentColor = tokens.accent,
+            isShiftActive = isShiftActive,
+            isCapsLock = isCapsLock,
+            onGlideWordCommitted = onGlideWordCommitted
+        )
     }
 }

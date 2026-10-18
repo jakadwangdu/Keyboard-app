@@ -34,6 +34,7 @@ fun MainKeyboardScreen(
     val keyboardMode by viewModel.keyboardMode.collectAsStateWithLifecycle()
     val iconPackType by viewModel.iconPackType.collectAsStateWithLifecycle()
     val theme by viewModel.keyboardTheme.collectAsStateWithLifecycle()
+    val tokens by viewModel.keymoldTokens.collectAsStateWithLifecycle()
     val keyHeight by viewModel.keyHeight.collectAsStateWithLifecycle()
     val showSettingsDialog by viewModel.showSettingsDialog.collectAsStateWithLifecycle()
     val isHapticOn by viewModel.isHapticOn.collectAsStateWithLifecycle()
@@ -191,6 +192,7 @@ fun MainKeyboardScreen(
                                 GboardQwertyView(
                                     iconPackType = iconPackType,
                                     theme = theme,
+                                    tokens = tokens,
                                     isShiftActive = isShiftActive,
                                     isCapsLock = isCapsLock,
                                     keyHeight = keyHeight,
@@ -209,6 +211,7 @@ fun MainKeyboardScreen(
                                     isAltSymbols = isAltSymbols,
                                     iconPackType = iconPackType,
                                     theme = theme,
+                                    tokens = tokens,
                                     keyHeight = keyHeight,
                                     onKeyPressed = { viewModel.typeKey(it) },
                                     onBackspace = { viewModel.backspace() },
@@ -222,9 +225,26 @@ fun MainKeyboardScreen(
                                 GboardEmojiStickerDrawer(
                                     iconPackType = iconPackType,
                                     theme = theme,
+                                    tokens = tokens,
                                     onEmojiSelected = { viewModel.typeKey(it) },
                                     onBackspace = { viewModel.backspace() },
+                                    onOpenSearch = { viewModel.setMode(KeyboardMode.EMOJI_SEARCH) },
                                     onCloseDrawer = { viewModel.setMode(KeyboardMode.QWERTY) }
+                                )
+                            }
+                            KeyboardMode.EMOJI_SEARCH -> {
+                                KeymoldEmojiSearchView(
+                                    tokens = tokens,
+                                    onEmojiSelected = { viewModel.typeKey(it) },
+                                    onBack = { viewModel.setMode(KeyboardMode.EMOJI_DRAWER) }
+                                )
+                            }
+                            KeyboardMode.VOICE_TYPING -> {
+                                KeymoldVoiceInputView(
+                                    tokens = tokens,
+                                    onTranscriptCommitted = { viewModel.typeKey(it) },
+                                    onSendMessage = { viewModel.sendMessage() },
+                                    onCloseVoiceMode = { viewModel.setMode(KeyboardMode.QWERTY) }
                                 )
                             }
                             KeyboardMode.TRANSLATE -> {
@@ -269,6 +289,7 @@ fun MainKeyboardScreen(
                                 GboardQwertyView(
                                     iconPackType = iconPackType,
                                     theme = theme,
+                                    tokens = tokens,
                                     isShiftActive = isShiftActive,
                                     isCapsLock = isCapsLock,
                                     keyHeight = keyHeight,
@@ -357,8 +378,12 @@ fun MainKeyboardScreen(
             ThemePickerSheet(
                 currentIconPack = iconPackType,
                 currentTheme = theme,
+                tokens = tokens,
                 onSelectIconPack = { viewModel.setIconPack(it) },
                 onSelectTheme = { viewModel.setTheme(it) },
+                onSelectBackgroundTheme = { viewModel.setBackgroundTheme(it) },
+                onSelectAccentColor = { viewModel.setAccentColor(it) },
+                onSelectKeySize = { viewModel.setKeySizeOption(it) },
                 onDismiss = { showThemeDialog = false }
             )
         }

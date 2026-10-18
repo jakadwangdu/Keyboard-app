@@ -4,533 +4,267 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.engine.EmojiPredictionEngine
-import com.example.engine.MediaType
 import com.example.icons.AppIcon
 import com.example.icons.AppIconGlyph
+import com.example.model.EmojiCategory
 import com.example.model.EmojiDatabase
 import com.example.model.IconPackType
 import com.example.model.KeyboardThemeType
+import com.example.ui.theme.AgePack
+import com.example.ui.theme.KeymoldThemeTokens
 
+/**
+ * Keymold Emoji Panel (UI1.md spec).
+ * - Top row of chips: Search | Everyone | Kids | Teens | Adults | Seniors. Active chip uses accent fill.
+ * - Grid: 8 columns, 26px emoji, 46px cells. Seniors pack: 5 columns, 36px emoji, 62px cells.
+ * - Bottom row: ABC | category tabs (icon only, 50% opacity, active 100% with key-secondary fill) | Backspace.
+ * - A Recent tab appears first once user picked an emoji (max 16, newest first).
+ * - Acts on tap so scrolling never types by accident.
+ */
 @Composable
 fun GboardEmojiStickerDrawer(
     iconPackType: IconPackType,
     theme: KeyboardThemeType,
+    tokens: KeymoldThemeTokens = KeymoldThemeTokens(),
+    recentEmojis: List<String> = emptyList(),
     onEmojiSelected: (String) -> Unit,
     onBackspace: () -> Unit,
+    onOpenSearch: () -> Unit = {},
     onCloseDrawer: () -> Unit
 ) {
-    var selectedCategoryId by remember { mutableStateOf("all") }
-    var searchQuery by remember { mutableStateOf("") }
-    var mediaTypeFilter by remember { mutableStateOf<MediaType?>(null) }
+    var selectedAgePack by remember { mutableStateOf(AgePack.EVERYONE) }
+    var selectedCategoryIndex by remember { mutableStateOf(0) }
 
-    val emojiKitchenStickers = remember {
-        listOf(
-            "✨🔔🔔✨", "👑💖", "💯🥰", "🕶️😎", "🫠🔥", "🚀✨", "🎉🥳", "🤖⚡",
-            "🩷✨", "🫨⚡", "🫧💖", "🍋‍🟩🍹", "🫶❤️", "🪩🕺", "🪿⚡", "🫡🔥"
-        )
-    }
-
-    val kaomojiList = remember {
-        listOf(
-            "(⁠・⁠∀⁠・⁠)", "(⁠^⁠^⁠)", "(⁠≧⁠▽⁠≦⁠)", "(⁠人⁠ ⁠•͈⁠ᴗ⁠•͈⁠)", "(⁠ʘ⁠ᴗ⁠ʘ⁠✿⁠)",
-            "(⁠◕⁠ᴗ⁠◕⁠✿⁠)", "(⁠ʘ⁠д⁠ʘ⁠╬⁠)", "(⁠눈⁠‸⁠눈⁠)", "(⁠ノ⁠ಠ⁠益⁠ಠ⁠)⁠ノ", "¯\\_(ツ)_/¯",
-            "(⁠づ⁠｡⁠◕⁠‿⁠‿⁠◕⁠｡⁠)⁠づ", "ʕ⁠っ⁠•⁠ᴥ⁠•⁠ʔ⁠っ", "(⁠つ⁠✧⁠ω⁠✧⁠)⁠つ", "(⁠⊃⁠｡⁠•́⁠‿⁠•̀⁠｡⁠)⁠⊃"
-        )
-    }
-
-    val bgColor = Color(theme.surfaceHex)
-    val cardBg = Color(theme.keyCapHex)
-    val altCardBg = Color(theme.keyCapAltHex)
-    val accentColor = Color(theme.accentHex)
-    val textColor = Color(theme.keyTextHex)
-
-    // Unified media search results across Emojis, GIFs, Stickers
-    val unifiedSearchResults = remember(searchQuery, mediaTypeFilter) {
-        if (searchQuery.isBlank()) emptyList()
-        else {
-            val all = EmojiPredictionEngine.searchUnifiedMedia(searchQuery)
-            if (mediaTypeFilter != null) all.filter { it.type == mediaTypeFilter } else all
+    val categories = remember(selectedAgePack, recentEmojis) {
+        val packCategories = EmojiDatabase.getCategoriesForPack(selectedAgePack).toMutableList()
+        if (recentEmojis.isNotEmpty()) {
+            packCategories.add(
+                0,
+                EmojiCategory(
+                    id = "recent",
+                    title = "Recent",
+                    iconGlyph = AppIconGlyph.REACTION_HEART,
+                    emojis = recentEmojis.take(16)
+                )
+            )
         }
+        packCategories
     }
+
+    val activeCategory = categories.getOrNull(selectedCategoryIndex.coerceIn(0, categories.size - 1)) ?: categories.first()
+    val isSeniors = selectedAgePack == AgePack.SENIORS
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(310.dp)
-            .background(bgColor)
-            .testTag("gboard_emoji_drawer")
+            .height(tokens.bodyHeight)
+            .background(tokens.keyboard)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .testTag("keymold_emoji_panel")
     ) {
-        // 1. Unified Search Input Bar (Gboard Top Search)
+        // 1. Top row of chips: Search | Everyone | Kids | Teens | Adults | Seniors
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(cardBg.copy(alpha = 0.5f))
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .horizontalScroll(rememberScrollState())
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Return to ABC Button
+            // Search Chip
             Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = cardBg,
+                shape = CircleShape,
+                color = tokens.keySecondary,
                 modifier = Modifier
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onCloseDrawer() }
-            ) {
-                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
-                    Text("ABC", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = accentColor)
-                }
-            }
-
-            // Search Bar Input Field
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = altCardBg,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(34.dp)
+                    .clip(CircleShape)
+                    .clickable { onOpenSearch() }
+                    .testTag("emoji_search_chip")
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = textColor.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp)
+                        tint = tokens.text,
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        textStyle = TextStyle(
-                            color = textColor,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        cursorBrush = SolidColor(accentColor),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        decorationBox = { innerTextField ->
-                            if (searchQuery.isEmpty()) {
-                                Text(
-                                    text = "Search Emojis, GIFs & Stickers (e.g. stress, pickle, fire)...",
-                                    color = textColor.copy(alpha = 0.45f),
-                                    fontSize = 11.sp
-                                )
-                            }
-                            innerTextField()
-                        }
+                    Text(
+                        text = "Search",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = tokens.text
                     )
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(
-                            onClick = { searchQuery = "" },
-                            modifier = Modifier.size(20.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear",
-                                tint = textColor.copy(alpha = 0.6f),
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
                 }
             }
 
-            // Backspace Key
-            IconButton(
-                onClick = onBackspace,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Backspace,
-                    contentDescription = "Backspace",
-                    tint = textColor.copy(alpha = 0.8f),
-                    modifier = Modifier.size(18.dp)
-                )
+            // Age Pack Chips
+            AgePack.values().forEach { pack ->
+                val isSelected = selectedAgePack == pack
+                Surface(
+                    shape = CircleShape,
+                    color = if (isSelected) tokens.accent else tokens.keySecondary,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable {
+                            selectedAgePack = pack
+                            selectedCategoryIndex = 0
+                        }
+                        .testTag("emoji_pack_${pack.name.lowercase()}")
+                ) {
+                    Text(
+                        text = pack.title,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) tokens.textOnAccent else tokens.text,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
 
-        // 2. Category / Media Switcher Tabs
-        Row(
+        // 2. Emoji Grid (Scrollable area acts on TAP, not pointer down)
+        val columns = if (isSeniors) 5 else 8
+        val emojiSize = if (isSeniors) 36.sp else 26.sp
+        val cellSize = if (isSeniors) 62.dp else 46.dp
+
+        Box(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .background(cardBg.copy(alpha = 0.3f))
-                .padding(horizontal = 6.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Meta WhatsApp New Emojis Tab
-                val isMetaWa = selectedCategoryId == "meta_whatsapp"
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isMetaWa) Color(0xFF25D366) else Color(0x3325D366),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { selectedCategoryId = "meta_whatsapp"; searchQuery = "" }
-                ) {
-                    Text(
-                        text = "💬 Meta WhatsApp New",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isMetaWa) Color.White else Color(0xFF25D366),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                // Unicode 18.0 Tag
-                val isU18 = selectedCategoryId == "unicode18"
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isU18) accentColor else accentColor.copy(alpha = 0.15f),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { selectedCategoryId = "unicode18"; searchQuery = "" }
-                ) {
-                    Text(
-                        text = "✨ Unicode 18.0",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isU18) Color.Black else accentColor,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                // All Emojis Tab
-                val isAllSelected = selectedCategoryId == "all"
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isAllSelected) accentColor.copy(alpha = 0.2f) else Color.Transparent,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { selectedCategoryId = "all"; searchQuery = "" }
-                ) {
-                    Text(
-                        text = "All Emojis",
-                        fontSize = 11.5.sp,
-                        fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isAllSelected) accentColor else textColor.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                // GIFs Reaction Tab
-                val isGifs = selectedCategoryId == "gifs"
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isGifs) accentColor.copy(alpha = 0.2f) else Color.Transparent,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { selectedCategoryId = "gifs"; searchQuery = "" }
-                ) {
-                    Text(
-                        text = "GIFs",
-                        fontSize = 11.5.sp,
-                        fontWeight = if (isGifs) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isGifs) accentColor else textColor.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                // Database categories
-                EmojiDatabase.allCategories.filter { it.id != "unicode18" && it.id != "meta_whatsapp" }.forEach { category ->
-                    val isSelected = selectedCategoryId == category.id
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isSelected) accentColor.copy(alpha = 0.2f) else Color.Transparent,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { selectedCategoryId = category.id; searchQuery = "" }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = category.emojis.firstOrNull() ?: "😃",
-                                fontSize = 13.sp
-                            )
-                            Text(
-                                text = category.title.split(" ").first(),
-                                fontSize = 11.5.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) accentColor else textColor.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                }
-
-                // Kaomoji Tab
-                val isKaomoji = selectedCategoryId == "kaomoji"
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (isKaomoji) accentColor.copy(alpha = 0.2f) else Color.Transparent,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { selectedCategoryId = "kaomoji"; searchQuery = "" }
-                ) {
-                    Text(
-                        text = "(⁠^⁠^⁠) Kaomoji",
-                        fontSize = 11.5.sp,
-                        fontWeight = if (isKaomoji) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isKaomoji) accentColor else textColor.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
-        }
-
-        HorizontalDivider(color = textColor.copy(alpha = 0.08f), thickness = 0.5.dp)
-
-        // 3. Grid / Content Viewport
-        if (searchQuery.isNotBlank()) {
-            // Unified Search Results (Emojis + GIFs + Stickers)
-            if (unifiedSearchResults.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("No matching media found for '$searchQuery'", color = textColor.copy(alpha = 0.6f), fontSize = 13.sp)
-                }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 75.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 6.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(unifiedSearchResults) { result ->
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = cardBg,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onEmojiSelected(result.content) }
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(6.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = if (result.type == MediaType.GIF) "GIF" else result.content,
-                                    fontSize = if (result.type == MediaType.EMOJI) 24.sp else 14.sp
-                                )
-                                Text(
-                                    text = result.title,
-                                    fontSize = 9.sp,
-                                    color = textColor.copy(alpha = 0.6f),
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } else if (selectedCategoryId == "gifs") {
-            // GIFs reaction catalog
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Fixed(columns),
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxSize()
+                    .testTag("emoji_grid"),
+                contentPadding = PaddingValues(bottom = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                items(EmojiPredictionEngine.gifsCatalog) { gif ->
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = cardBg,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(65.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onEmojiSelected("[GIF: ${gif.title}]") }
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(8.dp),
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(text = "🎬 GIF", fontSize = 10.sp, color = accentColor, fontWeight = FontWeight.Bold)
-                            Text(text = gif.title, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = textColor)
-                        }
-                    }
-                }
-            }
-        } else if (selectedCategoryId == "kaomoji") {
-            // Kaomoji Grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(kaomojiList) { kaomoji ->
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = cardBg,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onEmojiSelected(kaomoji) }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(text = kaomoji, fontSize = 13.sp, color = textColor)
-                        }
-                    }
-                }
-            }
-        } else if (selectedCategoryId == "all" || selectedCategoryId == "unicode18") {
-            // All Categories or Unicode 18
-            val categoriesToShow = if (selectedCategoryId == "unicode18") {
-                EmojiDatabase.allCategories.filter { it.id == "unicode18" }
-            } else {
-                EmojiDatabase.allCategories
-            }
-
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                categoriesToShow.forEach { category ->
-                    item(key = category.id) {
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp, start = 4.dp)
-                            ) {
-                                Text(
-                                    text = category.title,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (category.id == "unicode18") accentColor else textColor.copy(alpha = 0.7f)
-                                )
-                                if (category.id == "unicode18") {
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = accentColor.copy(alpha = 0.2f)
-                                    ) {
-                                        Text(
-                                            text = "Unicode 18.0",
-                                            fontSize = 8.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = accentColor,
-                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            // Clean grid flow with 7 items per row
-                            val rows = category.emojis.chunked(7)
-                            rows.forEach { rowEmojis ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.SpaceAround
-                                ) {
-                                    rowEmojis.forEach { emoji ->
-                                        Box(
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .clickable { onEmojiSelected(emoji) },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = emoji,
-                                                fontSize = 24.sp
-                                            )
-                                        }
-                                    }
-                                    // Fill empty slots so items don't stretch
-                                    if (rowEmojis.size < 7) {
-                                        repeat(7 - rowEmojis.size) {
-                                            Spacer(modifier = Modifier.size(44.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // Single Category Grid
-            val currentCategory = EmojiDatabase.allCategories.find { it.id == selectedCategoryId }
-            val emojis = currentCategory?.emojis ?: emptyList()
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(7),
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(emojis) { emoji ->
+                items(activeCategory.emojis, key = { it }) { emoji ->
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(cellSize)
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable { onEmojiSelected(emoji) },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = emoji,
-                            fontSize = 24.sp
+                            fontSize = emojiSize,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             }
         }
+
+        // 3. Bottom Row: ABC | Category tabs (icon only, 50% opacity, active 100% with key-secondary fill) | Backspace
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp)
+                .padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // ABC button
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = tokens.keySecondary,
+                modifier = Modifier
+                    .width(52.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onCloseDrawer() }
+                    .testTag("emoji_abc_btn")
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "ABC",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = tokens.text
+                    )
+                }
+            }
+
+            // Category Tabs
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                categories.forEachIndexed { index, cat ->
+                    val isSelected = selectedCategoryIndex == index
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) tokens.keySecondary else Color.Transparent)
+                            .clickable { selectedCategoryIndex = index },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AppIcon(
+                            glyph = cat.iconGlyph,
+                            packType = iconPackType,
+                            tint = if (isSelected) tokens.text else tokens.text.copy(alpha = 0.50f),
+                            size = 18.dp
+                        )
+                    }
+                }
+            }
+
+            // Backspace button
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = tokens.keySecondary,
+                modifier = Modifier
+                    .width(52.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onBackspace() }
+                    .testTag("emoji_backspace_btn")
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Backspace,
+                        contentDescription = "Backspace",
+                        tint = tokens.text,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
+            }
+        }
     }
 }
-

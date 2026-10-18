@@ -28,6 +28,8 @@ import com.example.model.SwitchType
 import com.example.ui.keyboard.GboardEmojiStickerDrawer
 import com.example.ui.keyboard.GboardQwertyView
 import com.example.ui.keyboard.GboardSymbolsView
+import com.example.ui.keyboard.KeymoldEmojiSearchView
+import com.example.ui.keyboard.KeymoldVoiceInputView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -381,7 +383,29 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                                 audioEngine.playKeyPressSound(currentSwitch)
                                                 handleBackspace()
                                             },
+                                            onOpenSearch = { currentMode = KeyboardMode.EMOJI_SEARCH },
                                             onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
+                                        )
+                                    }
+                                    KeyboardMode.EMOJI_SEARCH -> {
+                                        KeymoldEmojiSearchView(
+                                            onEmojiSelected = { emoji ->
+                                                audioEngine.playKeyPressSound(currentSwitch)
+                                                currentInputConnection?.commitText(emoji, 1)
+                                            },
+                                            onBack = { currentMode = KeyboardMode.EMOJI_DRAWER }
+                                        )
+                                    }
+                                    KeyboardMode.VOICE_TYPING -> {
+                                        KeymoldVoiceInputView(
+                                            onTranscriptCommitted = { spoken ->
+                                                currentInputConnection?.commitText(spoken, 1)
+                                            },
+                                            onSendMessage = {
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                                                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                                            },
+                                            onCloseVoiceMode = { currentMode = KeyboardMode.QWERTY }
                                         )
                                     }
                                     else -> {
