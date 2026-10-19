@@ -352,7 +352,16 @@ fun ConversationChatView(
 
                                     // Precision Cursor Bar: Always visibly renders at the scrubbed cursor position
                                     val safePos = cursorPosition.coerceIn(0, activeText.length)
-                                    val cursorRect = textLayoutResult?.getCursorRect(safePos)
+                                    val layout = textLayoutResult
+                                    val cursorRect = if (layout != null && safePos in 0..layout.layoutInput.text.length) {
+                                        try {
+                                            layout.getCursorRect(safePos)
+                                        } catch (_: Throwable) {
+                                            null
+                                        }
+                                    } else {
+                                        null
+                                    }
                                     if (cursorRect != null && (activeText.isNotEmpty() || cursorPosition > 0)) {
                                         val density = LocalDensity.current
                                         Box(
