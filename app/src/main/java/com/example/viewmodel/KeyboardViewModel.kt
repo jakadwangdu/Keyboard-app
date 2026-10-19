@@ -955,5 +955,10 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
             false
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        audioEngine.release()
+    }
 }
 

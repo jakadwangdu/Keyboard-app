@@ -2,7 +2,9 @@ package com.example.audio
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.SoundPool
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioTrack
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -11,11 +13,8 @@ import com.example.model.SwitchType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
@@ -31,22 +30,17 @@ class MechanicalAudioEngine(private val context: Context) {
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
     private val sampleRate = 44100
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    // Ultra-low latency Android SoundPool for rapid concurrent key clicks
-    private val soundPool: SoundPool = SoundPool.Builder()
-        .setMaxStreams(12)
-        .setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-        )
-        .build()
+    // Pre-synthesized PCM audio buffers for each switch type (pure memory, no disk I/O, no Codec2)
+    private val pcmCache = ConcurrentHashMap<SwitchType, ShortArray>()
 
-    // Map of SwitchType to SoundPool sound ID
-    private val soundIdMap = ConcurrentHashMap<SwitchType, Int>()
+    // Pool of static AudioTracks for instant playback with no media codec dependency
+    private val trackPool = ConcurrentHashMap<SwitchType, List<AudioTrack>>()
+    private val trackRoundRobin = ConcurrentHashMap<SwitchType, AtomicInteger>()
 
     var isSoundEnabled: Boolean = true
     var isHapticEnabled: Boolean = true
@@ -55,18 +49,58 @@ class MechanicalAudioEngine(private val context: Context) {
     var currentSwitch: SwitchType = SwitchType.CREAM_THOCK
 
     init {
-        // Pre-generate and cache sound files in background thread for instant hardware-accelerated playback
+        // Pre-generate raw PCM buffers and initialize direct AudioTracks in memory.
+        // Bypasses SoundPool and MediaCodec / Codec2, eliminating
+        // "Failed to query component interface for required system resources" errors.
         scope.launch {
             try {
-                for (switch in SwitchType.values()) {
+                // Clean up any old cached .wav files from previous versions
+                try {
+                    context.cacheDir.listFiles { _, name -> name.startsWith("mech_snd_") }?.forEach {
+                        it.delete()
+                    }
+                } catch (_: Throwable) {}
+
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+
+                val audioFormat = AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
+
+                for (switch in SwitchType.entries) {
                     val pcm = generateSwitchPcm(switch)
-                    val soundFile = File(context.cacheDir, "mech_snd_${switch.name.lowercase()}.wav")
-                    writeWavFile(soundFile, pcm, sampleRate)
-                    val soundId = soundPool.load(soundFile.absolutePath, 1)
-                    soundIdMap[switch] = soundId
+                    pcmCache[switch] = pcm
+
+                    // Create 2 static AudioTracks per switch for smooth rapid typing alternation
+                    val tracks = mutableListOf<AudioTrack>()
+                    for (i in 0 until 2) {
+                        try {
+                            val track = AudioTrack.Builder()
+                                .setAudioAttributes(audioAttributes)
+                                .setAudioFormat(audioFormat)
+                                .setBufferSizeInBytes(pcm.size * 2)
+                                .setTransferMode(AudioTrack.MODE_STATIC)
+                                .build()
+                            if (track.state == AudioTrack.STATE_INITIALIZED) {
+                                track.write(pcm, 0, pcm.size)
+                                tracks.add(track)
+                            }
+                        } catch (_: Throwable) {
+                            // AudioTrack creation error on unsupported environments handled gracefully
+                        }
+                    }
+                    if (tracks.isNotEmpty()) {
+                        trackPool[switch] = tracks
+                        trackRoundRobin[switch] = AtomicInteger(0)
+                    }
                 }
-            } catch (_: Exception) {
-                // Ignore initialization issues
+            } catch (_: Throwable) {
+                // Ignore initialization issues, will fallback to system keypress sound
             }
         }
     }
@@ -130,37 +164,6 @@ class MechanicalAudioEngine(private val context: Context) {
         return pcm
     }
 
-    private fun writeWavFile(file: File, pcmData: ShortArray, sampleRate: Int) {
-        val totalAudioLen = (pcmData.size * 2).toLong()
-        val totalDataLen = totalAudioLen + 36
-        val channels = 1
-        val byteRate = (sampleRate * 2 * channels).toLong()
-
-        FileOutputStream(file).use { fos ->
-            val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
-            header.put("RIFF".toByteArray())
-            header.putInt(totalDataLen.toInt())
-            header.put("WAVE".toByteArray())
-            header.put("fmt ".toByteArray())
-            header.putInt(16) // Subchunk1Size
-            header.putShort(1.toShort()) // AudioFormat (PCM = 1)
-            header.putShort(channels.toShort()) // NumChannels
-            header.putInt(sampleRate)
-            header.putInt(byteRate.toInt())
-            header.putShort((channels * 2).toShort()) // BlockAlign
-            header.putShort(16.toShort()) // BitsPerSample
-            header.put("data".toByteArray())
-            header.putInt(totalAudioLen.toInt())
-            fos.write(header.array())
-
-            val buffer = ByteBuffer.allocate(pcmData.size * 2).order(ByteOrder.LITTLE_ENDIAN)
-            for (sample in pcmData) {
-                buffer.putShort(sample)
-            }
-            fos.write(buffer.array())
-        }
-    }
-
     // Pre-cached VibrationEffects for zero-latency execution
     private val clickEffect: VibrationEffect? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         try { VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK) } catch (_: Exception) { null }
@@ -180,16 +183,44 @@ class MechanicalAudioEngine(private val context: Context) {
 
     fun playKeyPressSound(switch: SwitchType = currentSwitch, pitchShift: Float = 1.0f) {
         if (isSoundEnabled && volumeLevel > 0.01f) {
-            val soundId = soundIdMap[switch]
-            if (soundId != null && soundId > 0) {
-                val effectivePitch = (pitchShift * (0.98f + Random.nextFloat() * 0.04f)).coerceIn(0.5f, 2.0f)
-                soundPool.play(soundId, volumeLevel, volumeLevel, 1, 0, effectivePitch)
+            val tracks = trackPool[switch]
+            if (!tracks.isNullOrEmpty()) {
+                val rr = trackRoundRobin[switch]
+                val idx = ((rr?.getAndIncrement() ?: 0) and 0x7FFFFFFF) % tracks.size
+                val track = tracks[idx]
+                try {
+                    if (track.state == AudioTrack.STATE_INITIALIZED) {
+                        if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                            track.stop()
+                        }
+                        track.reloadStaticData()
+                        track.setVolume(volumeLevel)
+                        val effectivePitch = (pitchShift * (0.98f + Random.nextFloat() * 0.04f)).coerceIn(0.5f, 2.0f)
+                        val targetRate = (sampleRate * effectivePitch).toInt().coerceIn(4000, 96000)
+                        try {
+                            track.playbackRate = targetRate
+                        } catch (_: Throwable) {}
+                        track.play()
+                    } else {
+                        fallbackSystemSound()
+                    }
+                } catch (_: Throwable) {
+                    fallbackSystemSound()
+                }
+            } else {
+                fallbackSystemSound()
             }
         }
 
         if (isHapticEnabled && hapticStrength > 0.05f) {
             triggerHaptic(switch)
         }
+    }
+
+    private fun fallbackSystemSound() {
+        try {
+            audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD, volumeLevel)
+        } catch (_: Throwable) {}
     }
 
     /**
@@ -235,5 +266,18 @@ class MechanicalAudioEngine(private val context: Context) {
                 // Ignore haptic exceptions
             }
         }
+    }
+
+    fun release() {
+        trackPool.values.flatten().forEach { track ->
+            try {
+                if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                    track.stop()
+                }
+                track.release()
+            } catch (_: Throwable) {}
+        }
+        trackPool.clear()
+        pcmCache.clear()
     }
 }

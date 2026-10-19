@@ -492,6 +492,9 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
         if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.CREATED)) {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         }
+        if (::audioEngine.isInitialized) {
+            audioEngine.release()
+        }
         store.clear()
         super.onDestroy()
     }
