@@ -25,9 +25,11 @@ import com.example.model.IconPackType
 import com.example.model.KeyboardMode
 import com.example.model.KeyboardThemeType
 import com.example.model.SwitchType
+import com.example.model.ClipboardItem
 import com.example.ui.keyboard.GboardEmojiStickerDrawer
 import com.example.ui.keyboard.GboardQwertyView
 import com.example.ui.keyboard.GboardSymbolsView
+import com.example.ui.keyboard.KeymoldClipboardView
 import com.example.ui.keyboard.KeymoldEmojiSearchView
 import com.example.ui.keyboard.KeymoldVoiceInputView
 import androidx.compose.foundation.background
@@ -248,7 +250,10 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                 currentMode = if (currentMode == KeyboardMode.EMOJI_DRAWER) KeyboardMode.QWERTY else KeyboardMode.EMOJI_DRAWER
                             },
                             onOpenAttachments = { },
-                            onOpenClipboard = { },
+                            onOpenClipboard = {
+                                audioEngine.playKeyPressSound(currentSwitch)
+                                currentMode = if (currentMode == KeyboardMode.CLIPBOARD_DRAWER) KeyboardMode.QWERTY else KeyboardMode.CLIPBOARD_DRAWER
+                            },
                             onToggleVoiceTyping = { },
                             onFormatText = { wrapper ->
                                 currentInputConnection?.commitText(wrapper, 1)
@@ -394,6 +399,67 @@ class MechBoardImeService : InputMethodService(), LifecycleOwner, ViewModelStore
                                                 currentInputConnection?.commitText(emoji, 1)
                                             },
                                             onBack = { currentMode = KeyboardMode.EMOJI_DRAWER }
+                                        )
+                                    }
+                                    KeyboardMode.CLIPBOARD_DRAWER -> {
+                                        val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        var imeClips by remember {
+                                            val list = mutableListOf(
+                                                ClipboardItem(1L, "MechBoard typing test in progress ✨", isPinned = true),
+                                                ClipboardItem(2L, "Let's meet for mechanical keyboard meetup! ☕", isPinned = false)
+                                            )
+                                            try {
+                                                val clip = clipboardManager?.primaryClip
+                                                if (clip != null && clip.itemCount > 0) {
+                                                    for (i in 0 until clip.itemCount) {
+                                                        val t = clip.getItemAt(i)?.text?.toString()
+                                                        if (!t.isNullOrBlank() && list.none { it.text == t }) {
+                                                            list.add(0, ClipboardItem(text = t))
+                                                        }
+                                                    }
+                                                }
+                                            } catch (_: Exception) {}
+                                            mutableStateOf(list.take(30))
+                                        }
+
+                                        KeymoldClipboardView(
+                                            clipboardList = imeClips,
+                                            onPasteItem = { text ->
+                                                audioEngine.playKeyPressSound(currentSwitch, pitchShift = 1.15f)
+                                                currentInputConnection?.commitText(text, 1)
+                                            },
+                                            onAddClip = { text ->
+                                                val updated = imeClips.toMutableList()
+                                                updated.add(0, ClipboardItem(text = text))
+                                                imeClips = updated.take(30)
+                                            },
+                                            onTogglePin = { id ->
+                                                imeClips = imeClips.map {
+                                                    if (it.id == id) it.copy(isPinned = !it.isPinned) else it
+                                                }
+                                            },
+                                            onDeleteItem = { id ->
+                                                imeClips = imeClips.filter { it.id != id }
+                                            },
+                                            onClearUnpinned = {
+                                                imeClips = imeClips.filter { it.isPinned }
+                                            },
+                                            onSyncSystemClipboard = {
+                                                try {
+                                                    val clip = clipboardManager?.primaryClip
+                                                    if (clip != null && clip.itemCount > 0) {
+                                                        val updated = imeClips.toMutableList()
+                                                        for (i in 0 until clip.itemCount) {
+                                                            val t = clip.getItemAt(i)?.text?.toString()
+                                                            if (!t.isNullOrBlank() && updated.none { it.text == t }) {
+                                                                updated.add(0, ClipboardItem(text = t))
+                                                            }
+                                                        }
+                                                        imeClips = updated.take(30)
+                                                    }
+                                                } catch (_: Exception) {}
+                                            },
+                                            onCloseDrawer = { currentMode = KeyboardMode.QWERTY }
                                         )
                                     }
                                     KeyboardMode.VOICE_TYPING -> {

@@ -41,6 +41,10 @@ fun ClipboardSheet(
     var newClipInput by remember { mutableStateOf("") }
     var showAddInput by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        onSyncSystemClipboard()
+    }
+
     val surfaceColor = Color(theme.surfaceHex)
     val cardColor = Color(theme.keyCapHex)
     val altCardColor = Color(theme.keyCapAltHex)

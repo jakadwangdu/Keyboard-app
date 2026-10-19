@@ -194,24 +194,50 @@ fun GboardEmojiStickerDrawer(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // ABC button
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = tokens.keySecondary,
-                modifier = Modifier
-                    .width(52.dp)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable { onCloseDrawer() }
-                    .testTag("emoji_abc_btn")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "ABC",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = tokens.text
-                    )
+                // ABC button
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = tokens.keySecondary,
+                    modifier = Modifier
+                        .width(48.dp)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onCloseDrawer() }
+                        .testTag("emoji_abc_btn")
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "ABC",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = tokens.text
+                        )
+                    }
+                }
+
+                // Dedicated Search Emoji Button
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = tokens.keySecondary,
+                    modifier = Modifier
+                        .width(42.dp)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { onOpenSearch() }
+                        .testTag("emoji_search_bottom_btn")
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search Emoji",
+                            tint = tokens.accent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 

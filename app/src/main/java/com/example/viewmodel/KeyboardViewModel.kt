@@ -676,11 +676,21 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         try {
             val clip = clipboardManager?.primaryClip
             if (clip != null && clip.itemCount > 0) {
-                val clipText = clip.getItemAt(0)?.text?.toString()
-                if (!clipText.isNullOrBlank()) {
-                    val current = _clipboardHistory.value.toMutableList()
-                    current.removeAll { it.text == clipText }
-                    current.add(0, ClipboardItem(text = clipText))
+                val current = _clipboardHistory.value.toMutableList()
+                var updated = false
+                for (i in 0 until clip.itemCount) {
+                    val item = clip.getItemAt(i)
+                    val clipText = item?.text?.toString() ?: try {
+                        item?.coerceToText(getApplication())?.toString()
+                    } catch (_: Exception) { null }
+                    if (!clipText.isNullOrBlank()) {
+                        if (current.none { it.text == clipText }) {
+                            current.add(0, ClipboardItem(text = clipText))
+                            updated = true
+                        }
+                    }
+                }
+                if (updated) {
                     _clipboardHistory.value = current.take(30)
                 }
             }
@@ -691,7 +701,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     fun copyToSystemClipboard(text: String) {
         if (text.isBlank()) return
         try {
-            val clip = android.content.ClipData.newPlainText("Clacksy Copy", text)
+            val clip = android.content.ClipData.newPlainText("Keymold Copy", text)
             clipboardManager?.setPrimaryClip(clip)
         } catch (_: Exception) {
         }
@@ -704,7 +714,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         val current = _clipboardHistory.value.toMutableList()
         current.removeAll { it.text == text }
         current.add(0, ClipboardItem(text = text, isPinned = isPinned))
-        _clipboardHistory.value = current.take(20)
+        _clipboardHistory.value = current.take(30)
     }
 
     fun togglePinClipboard(id: Long) {
@@ -726,10 +736,15 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     fun pasteClipboardText(text: String) {
         val current = _activeText.value
-        val updated = if (current.isEmpty()) text else "$current $text"
+        val cur = _cursorPosition.value.coerceIn(0, current.length)
+        val updated = current.substring(0, cur) + text + current.substring(cur)
         _activeText.value = updated
-        _cursorPosition.value = updated.length
+        _cursorPosition.value = cur + text.length
         updateSuggestions(updated)
+        try {
+            val clip = android.content.ClipData.newPlainText("Keymold Copy", text)
+            clipboardManager?.setPrimaryClip(clip)
+        } catch (_: Exception) {}
         audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.2f)
     }
 
@@ -822,7 +837,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     fun pasteToSelection() {
         try {
             val clip = clipboardManager?.primaryClip
-            val pasteText = clip?.getItemAt(0)?.text?.toString() ?: ""
+            val pasteText = try {
+                clip?.getItemAt(0)?.text?.toString() ?: clip?.getItemAt(0)?.coerceToText(getApplication())?.toString()
+            } catch (_: Exception) { null } ?: _clipboardHistory.value.firstOrNull()?.text ?: ""
             if (pasteText.isNotEmpty()) {
                 val text = _activeText.value
                 val (start, end) = getSelectionBounds()
@@ -833,7 +850,8 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
                     text.substring(0, pos) + pasteText + text.substring(pos)
                 }
                 _activeText.value = updated
-                _cursorPosition.value = (start + pasteText.length).coerceIn(0, updated.length)
+                val newPos = if (start < end) start + pasteText.length else _cursorPosition.value + pasteText.length
+                _cursorPosition.value = newPos.coerceIn(0, updated.length)
                 _isSelectionActive.value = false
                 updateSuggestions(updated)
                 audioEngine.playKeyPressSound(_currentSwitch.value, pitchShift = 1.15f)

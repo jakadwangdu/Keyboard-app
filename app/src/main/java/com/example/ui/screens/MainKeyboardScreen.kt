@@ -125,7 +125,14 @@ fun MainKeyboardScreen(
                     }
                 },
                 onOpenAttachments = { showAttachmentSheet = true },
-                onOpenClipboard = { showClipboardSheet = true },
+                onOpenClipboard = {
+                    if (keyboardMode == KeyboardMode.CLIPBOARD_DRAWER) {
+                        viewModel.setMode(KeyboardMode.QWERTY)
+                    } else {
+                        viewModel.setMode(KeyboardMode.CLIPBOARD_DRAWER)
+                        viewModel.syncSystemClipboard()
+                    }
+                },
                 onToggleVoiceTyping = { viewModel.toggleVoiceTyping() },
                 onFormatText = { wrapper -> viewModel.formatText(wrapper) },
                 onOpenTranslate = {
@@ -237,6 +244,19 @@ fun MainKeyboardScreen(
                                     tokens = tokens,
                                     onEmojiSelected = { viewModel.typeKey(it) },
                                     onBack = { viewModel.setMode(KeyboardMode.EMOJI_DRAWER) }
+                                )
+                            }
+                            KeyboardMode.CLIPBOARD_DRAWER -> {
+                                KeymoldClipboardView(
+                                    tokens = tokens,
+                                    clipboardList = clipboardHistory,
+                                    onPasteItem = { text -> viewModel.pasteClipboardText(text) },
+                                    onAddClip = { text -> viewModel.addClipboardItem(text) },
+                                    onTogglePin = { id -> viewModel.togglePinClipboard(id) },
+                                    onDeleteItem = { id -> viewModel.deleteClipboardItem(id) },
+                                    onClearUnpinned = { viewModel.clearUnpinnedClipboard() },
+                                    onSyncSystemClipboard = { viewModel.syncSystemClipboard() },
+                                    onCloseDrawer = { viewModel.setMode(KeyboardMode.QWERTY) }
                                 )
                             }
                             KeyboardMode.VOICE_TYPING -> {
