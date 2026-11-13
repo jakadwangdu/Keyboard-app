@@ -1,6 +1,6 @@
 {
-  "name": "Clacksy",
-  "description": "Gboard-style mechanical keyboard app with latest Android conversation icons, WhatsApp packs, and authentic switch acoustics.",
+  "name": "Aura Keyboard",
+  "description": "Native Android system-wide keyboard IME with Canvas key rendering, multi-touch rollover, trackpad spacebar, word-swipe backspace, clipboard history, emoji drawer, and voice typing.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,3 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Clacksy</string>
+    <string name="app_name">Aura Keyboard</string>
+    <string name="ime_subtype_label">English (US) Aura</string>
+
+    <!-- Settings Activity -->
+    <string name="settings_subtitle">Warm espresso system keyboard</string>
+    <string name="status_enabled">Enabled</string>
+    <string name="status_not_enabled">Not enabled</string>
+    <string name="status_selected">Active keyboard</string>
+    <string name="status_not_selected">Not selected</string>
+
+    <string name="step_1_title">1. Enable Aura Keyboard</string>
+    <string name="step_1_desc">Open Android Input Method settings and toggle Aura Keyboard on.</string>
+    <string name="btn_enable_keyboard">Open Keyboard Settings</string>
+
+    <string name="step_2_title">2. Choose Keyboard</string>
+    <string name="step_2_desc">Select Aura Keyboard as your active input method.</string>
+    <string name="btn_choose_keyboard">Choose Keyboard</string>
+
+    <string name="step_3_title">3. Test Input Field</string>
+    <string name="test_field_hint">Tap here to test Aura Keyboard…</string>
+
+    <string name="preferences_title">Preferences</string>
+    <string name="pref_sound_title">Key click sounds</string>
+    <string name="pref_sound_desc">Subtle mechanical acoustic tap via SoundPool</string>
+    <string name="pref_haptics_title">Haptic feedback</string>
+    <string name="pref_haptics_desc">Crisp tactile pulse on key press and trackpad ticks</string>
+    <string name="pref_theme_title">Keyboard theme</string>
+    <string name="theme_auto">Auto</string>
+    <string name="theme_dark">Espresso</string>
+    <string name="theme_light">Cream</string>
+    <string name="pref_size_title">Key height preset</string>
+    <string name="btn_clear_clipboard">Clear Unpinned Clipboard</string>
+    <string name="clipboard_cleared_toast">Unpinned clipboard clips cleared</string>
+
+    <!-- Keyboard & Panels -->
+    <string name="toolbar_clipboard_cd">Clipboard history</string>
+    <string name="toolbar_emoji_cd">Emoji panel</string>
+    <string name="toolbar_voice_cd">Voice typing</string>
+    <string name="toolbar_size_cd">Key size %1$s</string>
+
+    <string name="clipboard_title">Clipboard</string>
+    <string name="clipboard_empty">No saved clips yet.\nCopied text appears here automatically.</string>
+    <string name="clipboard_clear_unpinned">Clear</string>
+    <string name="clipboard_back_cd">Back to keyboard</string>
+    <string name="clipboard_pin_cd">Pin clip</string>
+    <string name="clipboard_delete_cd">Delete clip</string>
+    <string name="clipboard_pinned_badge">PINNED</string>
+
+    <string name="emoji_abc">ABC</string>
+    <string name="emoji_backspace_cd">Backspace</string>
+    <string name="emoji_recents_empty">Tap any emoji to build recents</string>
+
+    <string name="voice_prompt">Speak now…</string>
+    <string name="voice_permission_needed">Microphone permission is needed for voice typing.</string>
+    <string name="voice_unavailable">Voice recognition is not available on this device.</string>
 </resources>

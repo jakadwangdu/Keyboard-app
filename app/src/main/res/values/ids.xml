@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="btn_enable_keyboard" type="id" />
+    <item name="btn_choose_keyboard" type="id" />
+    <item name="test_input_field" type="id" />
+    <item name="switch_sound" type="id" />
+    <item name="switch_haptics" type="id" />
+    <item name="btn_clear_clipboard" type="id" />
+    <item name="status_enabled_chip" type="id" />
+    <item name="status_selected_chip" type="id" />
+    <item name="keyboard_view" type="id" />
+</resources>
